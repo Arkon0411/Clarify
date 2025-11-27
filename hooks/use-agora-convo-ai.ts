@@ -46,9 +46,15 @@ export function useAgoraConvoAI() {
           errorData = { error: responseText || "Unknown error" }
         }
         
-        // Handle 409 Conflict gracefully - agent might already be running
-        if (response.status === 409) {
-          console.warn("AI agent already running (409 Conflict) - this is expected if agent was already started")
+        // Handle 409 Conflict / TaskConflict gracefully - agent already running
+        // Backend now returns 200 OK for TaskConflict, but handle 409 here as fallback
+        const isTaskConflict = response.status === 409 || 
+                              errorData.reason === "TaskConflict" ||
+                              errorData.error?.includes("TaskConflict") ||
+                              errorData.message?.includes("TaskConflict")
+        
+        if (isTaskConflict) {
+          console.log("✅ AI agent already running (TaskConflict) - treating as success")
           // Try to extract agent ID from error response if available
           const existingAgentId = errorData.agent_id || errorData.agentId || errorData.id
           if (existingAgentId) {
@@ -61,8 +67,8 @@ export function useAgoraConvoAI() {
             console.log(`Agent already started with ID: ${agentId}`)
             return agentId
           }
-          // Otherwise, treat as non-fatal warning
-          console.warn("409 Conflict but no agent ID available - continuing without agent")
+          // Otherwise, treat as success (backend handles it)
+          console.log("Agent already active, proceeding")
           return null
         }
         
