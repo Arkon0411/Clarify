@@ -1,20 +1,63 @@
 import type { Meeting } from "@/lib/types"
-import { Calendar, Clock, Users } from "lucide-react"
+import { Calendar, Clock, Users, Copy, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 
 interface MeetingCardProps {
   meeting: Meeting
+  onDelete?: () => void
 }
 
-export function MeetingCard({ meeting }: MeetingCardProps) {
+export function MeetingCard({ meeting, onDelete }: MeetingCardProps) {
+  const { toast } = useToast()
   const formattedDate = new Date(meeting.date).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
   })
 
+  const handleCopyLink = async () => {
+    if (!meeting.channel) return
+
+    const meetingUrl = `${window.location.origin}/meetings/live?channel=${meeting.channel}&title=${encodeURIComponent(meeting.title)}`
+    
+    try {
+      await navigator.clipboard.writeText(meetingUrl)
+      toast({
+        title: "Link copied!",
+        description: "Meeting link has been copied to clipboard.",
+      })
+    } catch (error) {
+      console.error("Failed to copy link:", error)
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy link to clipboard.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleJoinMeeting = () => {
+    if (meeting.isScheduled && meeting.channel) {
+      window.location.href = `/meetings/live?channel=${meeting.channel}&title=${encodeURIComponent(meeting.title)}`
+    }
+  }
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onDelete) {
+      onDelete()
+    }
+  }
+
   return (
-    <div className="rounded-xl bg-card p-3 sm:p-4 shadow-sm border border-border hover:shadow-md transition-shadow">
+    <div 
+      className={`rounded-xl bg-card p-3 sm:p-4 shadow-sm border border-border hover:shadow-md transition-shadow ${
+        meeting.isScheduled ? "cursor-pointer" : ""
+      }`}
+      onClick={meeting.isScheduled ? handleJoinMeeting : undefined}
+    >
       <h4 className="text-sm sm:text-base font-medium text-foreground mb-2.5 sm:mb-3 text-pretty leading-snug">
         {meeting.title}
       </h4>
@@ -24,10 +67,12 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
           <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
           <span className="whitespace-nowrap">{formattedDate}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-          <span className="whitespace-nowrap">{meeting.duration} min</span>
-        </div>
+        {meeting.duration > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="whitespace-nowrap">{meeting.duration} min</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5">
           <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
           <span>{meeting.participants.length}</span>
@@ -48,7 +93,37 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
             </div>
           )}
         </div>
-        <span className="text-xs text-muted-foreground whitespace-nowrap">{meeting.tasks.length} tasks</span>
+        {!meeting.isScheduled && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{meeting.tasks.length} tasks</span>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="mt-3 pt-3 border-t border-border flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        {meeting.isScheduled && meeting.channel && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-2 text-xs h-8"
+            onClick={handleCopyLink}
+          >
+            <Copy className="h-3 w-3" />
+            Copy Link
+          </Button>
+        )}
+        {onDelete && (
+          <Button
+            variant="outline"
+            size="sm"
+            className={`gap-2 text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10 ${
+              meeting.isScheduled && meeting.channel ? "" : "flex-1"
+            }`}
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </Button>
+        )}
       </div>
     </div>
   )

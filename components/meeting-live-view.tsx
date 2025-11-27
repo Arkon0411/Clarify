@@ -161,11 +161,26 @@ export function MeetingLiveView() {
   // Agora Conversational AI - AI persona that joins automatically
   const { agentId, start: startConvoAI, stop: stopConvoAI } = useAgoraConvoAI()
   const agentIdRef = useRef<string | null>(null)
+  const remoteUsersRef = useRef<RemoteUser[]>([])
+  const isJoinedRef = useRef(false)
+  const isPublishedRef = useRef(false)
   
-  // Keep agentId in ref for cleanup
+  // Keep refs in sync with state
   useEffect(() => {
     agentIdRef.current = agentId
   }, [agentId])
+  
+  useEffect(() => {
+    remoteUsersRef.current = remoteUsers
+  }, [remoteUsers])
+  
+  useEffect(() => {
+    isJoinedRef.current = isJoined
+  }, [isJoined])
+  
+  useEffect(() => {
+    isPublishedRef.current = isPublished
+  }, [isPublished])
 
   // Timer - only run when joined
   useEffect(() => {
@@ -233,14 +248,15 @@ export function MeetingLiveView() {
           const waitForConnection = async (maxWait: number = 10000) => {
             const startTime = Date.now()
             while (Date.now() - startTime < maxWait) {
-              if (isJoined && isPublished) {
+              // Use refs to get latest values
+              if (isJoinedRef.current && isPublishedRef.current) {
                 // Double check by waiting a bit more for stability
                 await new Promise(resolve => setTimeout(resolve, 1000))
                 return true
               }
               await new Promise(resolve => setTimeout(resolve, 500))
             }
-            return isJoined && isPublished
+            return isJoinedRef.current && isPublishedRef.current
           }
 
           try {
@@ -252,10 +268,13 @@ export function MeetingLiveView() {
               return
             }
 
+            console.log("✅ User connected, starting AI agent...")
+
             // Start the agent with retry logic
             const startAgentWithRetry = async (retries: number = 3) => {
               for (let i = 0; i < retries; i++) {
                 try {
+                  console.log(`🚀 Starting AI agent (attempt ${i + 1}/${retries})...`)
                   const agentId = await startConvoAI({
                     channel: channelName,
                     agentRtcUid: 10001,
@@ -264,8 +283,49 @@ export function MeetingLiveView() {
                   })
                   
                   agentIdRef.current = agentId
-                  return agentId
+                  console.log(`✅ AI agent started with ID: ${agentId}`)
+                  
+                  // Wait and check if agent actually joined (check multiple times over 20 seconds)
+                  let agentJoined = false
+                  for (let check = 0; check < 20; check++) {
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                    
+                    // Check if agent joined by looking at remoteUsersRef (latest value)
+                    const currentRemoteUsers = remoteUsersRef.current
+                    agentJoined = currentRemoteUsers.some((u) => 
+                      String(u.uid) === "10001" || String(u.uid) === "10002"
+                    )
+                    
+                    if (agentJoined) {
+                      console.log("🎉 AI agent successfully joined the meeting!")
+                      return agentId
+                    }
+                    
+                    if (check % 5 === 0) {
+                      console.log(`⏳ Waiting for AI agent to join... (${check + 1}/20 seconds)`)
+                      console.log(`   Current remote users: ${currentRemoteUsers.map(u => u.uid).join(", ")}`)
+                    }
+                  }
+                  
+                  // If agent didn't join after 20 seconds, retry
+                  if (i < retries - 1) {
+                    console.log(`❌ Agent didn't join after 20 seconds, retrying... (${i + 1}/${retries})`)
+                    // Stop the previous agent before retrying
+                    if (agentIdRef.current) {
+                      try {
+                        await stopConvoAI()
+                        console.log("🛑 Stopped previous agent attempt")
+                      } catch (e) {
+                        console.warn("⚠️ Error stopping previous agent:", e)
+                      }
+                      agentIdRef.current = null
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 2000))
+                  } else {
+                    console.error("❌ AI agent failed to join after all retries")
+                  }
                 } catch (error) {
+                  console.error(`❌ Error starting AI agent (attempt ${i + 1}):`, error)
                   if (i === retries - 1) {
                     throw error
                   }
@@ -273,12 +333,13 @@ export function MeetingLiveView() {
                   await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
                 }
               }
+              return null
             }
 
             await startAgentWithRetry(3)
           } catch (aiError) {
             // Don't block the meeting if AI fails to start
-            console.error("Failed to start AI agent after retries:", aiError)
+            console.error("❌ Failed to start AI agent after retries:", aiError)
           }
         }
       } catch (error) {
