@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useAgoraRTC } from "@/hooks/use-agora-rtc"
+import { IntelligencePanel } from "@/components/intelligence-panel"
 import { teamMembers } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 import {
@@ -17,10 +20,7 @@ import {
   Hand,
   MessageSquare,
   Lock,
-  CheckCircle2,
   Clock,
-  ChevronDown,
-  ChevronRight,
   Menu,
 } from "lucide-react"
 
@@ -100,21 +100,208 @@ const confidenceColors = {
 }
 
 export function MeetingLiveView() {
-  const [elapsedTime, setElapsedTime] = useState(105)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isVideoOn, setIsVideoOn] = useState(true)
+  const searchParams = useSearchParams()
+  // Extract values directly to avoid object reference changes causing re-renders
+  const channelParam = searchParams.get("channel")
+  const titleParam = searchParams.get("title")
+  
+  // Memoize channel name and title - use stable values
+  const channelName = useMemo(() => {
+    return channelParam || `meeting-${Date.now()}`
+  }, [channelParam])
+  const meetingTitle = useMemo(() => {
+    return titleParam || "Weekly Team Standup"
+  }, [titleParam])
+
+  const [elapsedTime, setElapsedTime] = useState(0)
   const [isConfidential, setIsConfidential] = useState(false)
   const [detectedTasks, setDetectedTasks] = useState(mockDetectedTasks)
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(true)
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const isMobile = useIsMobile()
 
+  // Video container refs
+  const localVideoRef = useRef<HTMLDivElement>(null)
+  const remoteVideoRefs = useRef<Map<number | string, HTMLDivElement>>(new Map())
+
+  // Agora configuration - memoize to prevent hook re-initialization
+  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || ""
+  // Generate UID in valid range [0, 10000] for Agora
+  const agoraUid = useRef(Math.floor(Math.random() * 10000)) // Random UID between 0-10000
+  const agoraOptions = useMemo(() => ({
+    appId,
+    channel: channelName,
+    uid: agoraUid.current,
+  }), [appId, channelName])
+
+  const {
+    isJoined,
+    isPublished,
+    localTracks,
+    remoteUsers,
+    isMuted,
+    isVideoEnabled,
+    join,
+    publish,
+    leave,
+    toggleAudio,
+    toggleVideo,
+  } = useAgoraRTC(agoraOptions)
+
+  // Timer - only run when joined
   useEffect(() => {
+    if (!isJoined) return
+
     const timer = setInterval(() => {
       setElapsedTime((prev) => prev + 1)
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [isJoined])
+
+  // Track if initialization has started
+  const initStartedRef = useRef(false)
+
+  // Initialize Agora on mount
+  useEffect(() => {
+    // Prevent multiple initializations
+    if (initStartedRef.current) return
+    initStartedRef.current = true
+
+    let isMounted = true
+
+    const initializeMeeting = async () => {
+      if (!appId) {
+        console.error("Agora App ID not configured. Please set NEXT_PUBLIC_AGORA_APP_ID in your environment variables.")
+        if (isMounted) setIsInitializing(false)
+        return
+      }
+
+      try {
+        if (isMounted) setIsInitializing(true)
+
+        // Fetch token from API
+        const uid = agoraOptions.uid
+        const tokenResponse = await fetch(
+          `/api/agora/token?channel=${channelName}&uid=${uid}&role=publisher`,
+        )
+
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.json()
+          throw new Error(errorData.error || "Failed to fetch token")
+        }
+
+        const { token } = await tokenResponse.json()
+
+        // Check if still mounted before proceeding
+        if (!isMounted) return
+
+        // Join channel with token
+        await join(token)
+
+        // Check again before publishing
+        if (!isMounted) {
+          await leave()
+          return
+        }
+
+        // Create and publish tracks
+        await publish()
+      } catch (error) {
+        console.error("Failed to initialize meeting:", error)
+        if (isMounted) {
+          alert(`Failed to join meeting: ${error instanceof Error ? error.message : "Unknown error"}`)
+          setIsInitializing(false)
+        }
+      } finally {
+        if (isMounted) setIsInitializing(false)
+      }
+    }
+
+    initializeMeeting()
+
+    return () => {
+      isMounted = false
+      leave()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount
+
+  // Play local video track
+  useEffect(() => {
+    if (!localTracks.videoTrack || !localVideoRef.current) {
+      console.log('Video track or element not ready:', { 
+        hasTrack: !!localTracks.videoTrack, 
+        hasElement: !!localVideoRef.current,
+        isPublished
+      })
+      return
+    }
+
+    const playVideo = async () => {
+      // Wait a bit to ensure element is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      if (!localVideoRef.current || !localTracks.videoTrack) {
+        console.warn('Video element or track no longer available')
+        return
+      }
+
+      try {
+        console.log('Playing local video track to element', {
+          elementExists: !!localVideoRef.current,
+          elementDimensions: {
+            width: localVideoRef.current.offsetWidth,
+            height: localVideoRef.current.offsetHeight
+          },
+          trackEnabled: localTracks.videoTrack.isPlaying
+        })
+        await localTracks.videoTrack.play(localVideoRef.current, { mirror: true })
+        console.log('Local video track playing successfully')
+      } catch (error) {
+        console.error('Failed to play local video:', error)
+      }
+    }
+
+    playVideo()
+
+    // Don't stop the track in cleanup - only stop when leaving channel
+    return () => {
+      // Cleanup handled by leave() function
+    }
+  }, [localTracks.videoTrack, isPublished])
+
+  // Play remote video tracks
+  useEffect(() => {
+    remoteUsers.forEach((user) => {
+      if (user.videoTrack) {
+        const container = remoteVideoRefs.current.get(user.uid)
+        if (container) {
+          user.videoTrack.play(container)
+        }
+      }
+      if (user.audioTrack) {
+        user.audioTrack.play()
+      }
+    })
+
+    return () => {
+      remoteUsers.forEach((user) => {
+        if (user.videoTrack) {
+          user.videoTrack.stop()
+        }
+        if (user.audioTrack) {
+          user.audioTrack.stop()
+        }
+      })
+    }
+  }, [remoteUsers])
+
+  const handleLeave = async () => {
+    await leave()
+    // Navigate back to meetings page
+    window.location.href = "/meetings"
+  }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -128,114 +315,23 @@ export function MeetingLiveView() {
     )
   }
 
+  // Memoize Switch callback to prevent re-renders
+  const handleConfidentialChange = useCallback((checked: boolean) => {
+    // Use functional update to avoid dependency on isConfidential
+    setIsConfidential((prev) => {
+      // Only update if value actually changed
+      if (prev === checked) return prev
+      return checked
+    })
+  }, [])
+
   const pendingTasks = detectedTasks.filter((t) => !t.confirmed)
   const confirmedTasks = detectedTasks.filter((t) => t.confirmed)
 
-  // Intelligence Panel Content Component
-  const IntelligencePanel = () => (
-    <>
-      {/* Sidebar Header */}
-      <div className="px-4 py-3 border-b border-border bg-sage-light/30 dark:bg-sage-light/20">
-        <h2 className="font-semibold text-foreground">Meeting Intelligence</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Real-time insights</p>
-      </div>
-
-      {/* Real-time Transcript */}
-      <div className="flex flex-col border-b border-border overflow-hidden">
-        <button
-          onClick={() => setIsTranscriptOpen(!isTranscriptOpen)}
-          className="flex items-center justify-between px-4 py-2.5 bg-sage-light/20 dark:bg-sage-light/10 border-b border-border hover:bg-sage-light/30 dark:hover:bg-sage-light/20 transition-colors"
-        >
-          <h3 className="text-sm font-medium text-foreground">Real-time Transcript</h3>
-          {isTranscriptOpen ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        <div
-          className={cn(
-            "overflow-y-auto transition-all duration-300 ease-in-out",
-            isTranscriptOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0",
-          )}
-        >
-          <div className="p-4 space-y-3">
-            {mockTranscript.map((entry) => (
-              <div key={entry.id} className="flex gap-2">
-                <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0", entry.speakerColor)} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-medium text-foreground">{entry.speaker}</span>
-                    <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{entry.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Detected Tasks */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-4 py-2.5 bg-clay-light/20 dark:bg-clay-light/10 border-b border-border">
-          <h3 className="text-sm font-medium text-foreground">Detected Tasks</h3>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {/* Pending Confirmation */}
-          {pendingTasks.length > 0 && (
-            <div className="p-3 border-b border-border">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                Pending Confirmation ({pendingTasks.length})
-              </h4>
-              <div className="space-y-2">
-                {pendingTasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => toggleTaskConfirmation(task.id)}
-                    className="w-full text-left p-2.5 rounded-lg bg-secondary/50 dark:bg-secondary/70 hover:bg-secondary dark:hover:bg-secondary/80 transition-colors border border-border/50 dark:border-border/70"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0",
-                          confidenceColors[task.confidence],
-                        )}
-                      />
-                      <span className="text-sm text-foreground leading-snug">{task.title}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Confirmed Tasks */}
-          {confirmedTasks.length > 0 && (
-            <div className="p-3">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                Confirmed ({confirmedTasks.length})
-              </h4>
-              <div className="space-y-2">
-                {confirmedTasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => toggleTaskConfirmation(task.id)}
-                    className="w-full text-left p-2.5 rounded-lg bg-sage-light/40 dark:bg-sage-light/20 hover:bg-sage-light/60 dark:hover:bg-sage-light/30 transition-colors border border-sage/20 dark:border-sage/30"
-                  >
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-sage mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-foreground leading-snug">{task.title}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
+  // Memoize callbacks to prevent re-renders
+  const handleTranscriptToggle = useCallback(() => {
+    setIsTranscriptOpen((prev) => !prev)
+  }, [])
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-background">
@@ -244,12 +340,20 @@ export function MeetingLiveView() {
         {/* Meeting Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-3 sm:px-6 py-2 sm:py-3 bg-card border-b border-border">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className="flex h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" />
-            <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Weekly Team Standup</h1>
-            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
-              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="whitespace-nowrap">{formatTime(elapsedTime)}</span>
-            </div>
+            {isJoined && <div className="flex h-2 w-2 rounded-full bg-destructive animate-pulse flex-shrink-0" />}
+            <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">{meetingTitle}</h1>
+            {isJoined && (
+              <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="whitespace-nowrap">{formatTime(elapsedTime)}</span>
+              </div>
+            )}
+            {isInitializing && (
+              <span className="text-xs text-muted-foreground">Connecting...</span>
+            )}
+            {!appId && (
+              <span className="text-xs text-destructive">Agora App ID not configured</span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
@@ -257,7 +361,10 @@ export function MeetingLiveView() {
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-foreground hidden xl:inline">Confidential</span>
-                <Switch checked={isConfidential} onCheckedChange={setIsConfidential} />
+                <Switch 
+                  checked={isConfidential} 
+                  onCheckedChange={handleConfidentialChange} 
+                />
               </div>
             )}
             {isMobile && (
@@ -270,7 +377,14 @@ export function MeetingLiveView() {
                   </SheetTrigger>
                   <SheetContent side="right" className="w-full sm:w-[400px] p-0 flex flex-col">
                     <SheetTitle className="sr-only">Meeting Intelligence</SheetTitle>
-                    <IntelligencePanel />
+                    <IntelligencePanel
+                      isTranscriptOpen={isTranscriptOpen}
+                      onTranscriptToggle={handleTranscriptToggle}
+                      pendingTasks={pendingTasks}
+                      confirmedTasks={confirmedTasks}
+                      onTaskToggle={toggleTaskConfirmation}
+                      transcript={mockTranscript}
+                    />
                   </SheetContent>
                 </Sheet>
               </>
@@ -304,42 +418,101 @@ export function MeetingLiveView() {
             <div className="flex items-center gap-2">
               <Lock className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-foreground">Confidential</span>
-              <Switch checked={isConfidential} onCheckedChange={setIsConfidential} />
+              <Switch 
+                checked={isConfidential} 
+                onCheckedChange={handleConfidentialChange} 
+              />
             </div>
           </div>
         )}
 
         {/* Video Grid */}
         <div className="flex-1 p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 auto-rows-fr overflow-y-auto">
-          {teamMembers.map((member, idx) => (
+          {/* Remote Users */}
+          {remoteUsers.map((user) => (
             <div
-              key={member.id}
+              key={user.uid}
               className="relative rounded-lg sm:rounded-xl bg-card border border-border overflow-hidden flex items-center justify-center min-h-[150px] sm:min-h-[200px] shadow-sm"
             >
-              {/* Avatar/Initials */}
-              <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
-                <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                <AvatarFallback className="bg-sage text-white text-xl sm:text-2xl">
-                  {member.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-
+              <div
+                ref={(el) => {
+                  if (el) remoteVideoRefs.current.set(user.uid, el)
+                }}
+                className="w-full h-full"
+              />
+              {!user.videoTrack && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                    <AvatarFallback className="bg-sage text-white text-xl sm:text-2xl">
+                      User {String(user.uid).slice(-2)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
               {/* Name Overlay */}
               <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md bg-card/90 backdrop-blur-sm border border-border">
-                <span className="text-xs sm:text-sm font-medium text-foreground">{member.name}</span>
+                <span className="text-xs sm:text-sm font-medium text-foreground">User {String(user.uid)}</span>
               </div>
-
               {/* Mic Status Indicator */}
-              {idx === 0 && isMuted && (
+              {!user.audioTrack && (
                 <div className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full bg-destructive/90">
                   <MicOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
               )}
             </div>
           ))}
+
+          {/* Local Video (if published) */}
+          {isPublished && localTracks.videoTrack && (
+            <div className="relative rounded-lg sm:rounded-xl bg-card border border-border overflow-hidden min-h-[150px] sm:min-h-[200px] shadow-sm bg-black w-full">
+              {/* Video container - Agora will inject video element here */}
+              <div 
+                ref={localVideoRef} 
+                className="w-full h-full"
+                style={{ 
+                  minHeight: '150px',
+                  width: '100%',
+                  display: 'block'
+                }}
+              />
+              {/* Show overlay when video is disabled */}
+              {!isVideoEnabled && (
+                <div className="absolute inset-0 flex items-center justify-center bg-card/95">
+                  <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                    <AvatarFallback className="bg-sage text-white text-xl sm:text-2xl">You</AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
+              {/* Name Overlay */}
+              <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md bg-card/90 backdrop-blur-sm border border-border z-10">
+                <span className="text-xs sm:text-sm font-medium text-foreground">You</span>
+              </div>
+              {/* Mic Status Indicator */}
+              {isMuted && (
+                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full bg-destructive/90 z-10">
+                  <MicOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                </div>
+              )}
+              {/* Video Off Indicator */}
+              {!isVideoEnabled && (
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 p-1.5 sm:p-2 rounded-full bg-destructive/90 z-10">
+                  <VideoOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Placeholder when not published */}
+          {!isPublished && (
+            <div className="relative rounded-lg sm:rounded-xl bg-card border border-border overflow-hidden flex items-center justify-center min-h-[150px] sm:min-h-[200px] shadow-sm">
+              <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                <AvatarFallback className="bg-sage text-white text-xl sm:text-2xl">You</AvatarFallback>
+              </Avatar>
+              <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md bg-card/90 backdrop-blur-sm border border-border">
+                <span className="text-xs sm:text-sm font-medium text-foreground">You</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Floating Meeting Controls */}
@@ -351,7 +524,11 @@ export function MeetingLiveView() {
               "rounded-full h-10 w-10 sm:h-12 sm:w-12 hover:bg-secondary text-foreground",
               isMuted && "bg-destructive/20 text-destructive hover:bg-destructive/30",
             )}
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={async () => {
+              console.log('Toggling audio, current state:', isMuted)
+              await toggleAudio(!isMuted)
+            }}
+            disabled={!isPublished}
           >
             {isMuted ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
@@ -361,11 +538,15 @@ export function MeetingLiveView() {
             size="icon"
             className={cn(
               "rounded-full h-10 w-10 sm:h-12 sm:w-12 hover:bg-secondary text-foreground",
-              !isVideoOn && "bg-destructive/20 text-destructive hover:bg-destructive/30",
+              !isVideoEnabled && "bg-destructive/20 text-destructive hover:bg-destructive/30",
             )}
-            onClick={() => setIsVideoOn(!isVideoOn)}
+            onClick={async () => {
+              console.log('Toggling video, current state:', isVideoEnabled)
+              await toggleVideo(!isVideoEnabled)
+            }}
+            disabled={!isPublished}
           >
-            {isVideoOn ? <Video className="h-4 w-4 sm:h-5 sm:w-5" /> : <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+            {isVideoEnabled ? <Video className="h-4 w-4 sm:h-5 sm:w-5" /> : <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
 
           <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 sm:h-12 sm:w-12 text-foreground hover:bg-secondary">
@@ -382,6 +563,7 @@ export function MeetingLiveView() {
             variant="ghost"
             size="icon"
             className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-destructive hover:bg-destructive/90 text-white"
+            onClick={handleLeave}
           >
             <PhoneOff className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
@@ -391,7 +573,14 @@ export function MeetingLiveView() {
       {/* Right Sidebar - Intelligence Panel (Desktop Only) */}
       {!isMobile && (
         <div className="hidden lg:flex w-[350px] bg-card border-l border-border flex-col">
-          <IntelligencePanel />
+          <IntelligencePanel
+            isTranscriptOpen={isTranscriptOpen}
+            onTranscriptToggle={handleTranscriptToggle}
+            pendingTasks={pendingTasks}
+            confirmedTasks={confirmedTasks}
+            onTaskToggle={toggleTaskConfirmation}
+            transcript={mockTranscript}
+          />
         </div>
       )}
     </div>
