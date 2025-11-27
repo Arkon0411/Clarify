@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { CheckCircle2, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -41,6 +42,16 @@ export function IntelligencePanel({
   onTaskToggle,
   transcript,
 }: IntelligencePanelProps) {
+  const transcriptEndRef = useRef<HTMLDivElement>(null)
+  const transcriptContainerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when new transcript entries are added
+  useEffect(() => {
+    if (isTranscriptOpen && transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [transcript, isTranscriptOpen])
+
   return (
     <>
       {/* Sidebar Header */}
@@ -63,24 +74,38 @@ export function IntelligencePanel({
           )}
         </button>
         <div
+          ref={transcriptContainerRef}
           className={cn(
             "overflow-y-auto transition-all duration-300 ease-in-out",
             isTranscriptOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0",
           )}
         >
           <div className="p-4 space-y-3">
-            {transcript.map((entry) => (
-              <div key={entry.id} className="flex gap-2">
-                <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0", entry.speakerColor)} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-medium text-foreground">{entry.speaker}</span>
-                    <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{entry.text}</p>
-                </div>
+            {transcript.length === 0 ? (
+              <div className="text-center py-8 space-y-2">
+                <p className="text-sm text-muted-foreground">Waiting for transcription...</p>
+                <p className="text-xs text-muted-foreground/70">
+                  Make sure your microphone is enabled and transcription is configured.
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Check browser console for [Transcription] logs.
+                </p>
               </div>
-            ))}
+            ) : (
+              transcript.map((entry) => (
+                <div key={entry.id} className="flex gap-2">
+                  <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0", entry.speakerColor)} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-medium text-foreground">{entry.speaker}</span>
+                      <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{entry.text}</p>
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={transcriptEndRef} />
           </div>
         </div>
       </div>
