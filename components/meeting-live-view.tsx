@@ -131,9 +131,8 @@ export function MeetingLiveView() {
   const pendingTasks = detectedTasks.filter((t) => !t.confirmed)
   const confirmedTasks = detectedTasks.filter((t) => t.confirmed)
 
-  // Intelligence Panel Content Component
-  // eslint-disable-next-line react-hooks/static-components
-  const IntelligencePanel = () => (
+  // Intelligence Panel JSX - used in multiple places below
+  const intelligencePanelContent = (
     <>
       {/* Sidebar Header */}
       <div className="px-4 py-3 border-b border-border bg-sage-light/30 dark:bg-sage-light/20">
@@ -271,7 +270,7 @@ export function MeetingLiveView() {
                   </SheetTrigger>
                   <SheetContent side="right" className="w-full sm:w-[400px] p-0 flex flex-col">
                     <SheetTitle className="sr-only">Meeting Intelligence</SheetTitle>
-                    <IntelligencePanel />
+                    {intelligencePanelContent}
                   </SheetContent>
                 </Sheet>
               </>
@@ -312,7 +311,7 @@ export function MeetingLiveView() {
 
         {/* Video Grid */}
         <div className="flex-1 p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 auto-rows-fr overflow-y-auto">
-          {teamMembers.map((member, idx) => (
+          {teamMembers.map((member) => (
             <div
               key={member.id}
               className="relative rounded-lg sm:rounded-xl bg-card border border-border overflow-hidden flex items-center justify-center min-h-[150px] sm:min-h-[200px] shadow-sm"
@@ -334,7 +333,7 @@ export function MeetingLiveView() {
               </div>
 
               {/* Mic Status Indicator */}
-              {idx === 0 && isMuted && (
+              {member.id === teamMembers[0].id && isMuted && (
                 <div className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full bg-destructive/90">
                   <MicOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
@@ -392,7 +391,7 @@ export function MeetingLiveView() {
       {/* Right Sidebar - Intelligence Panel (Desktop Only) */}
       {!isMobile && (
         <div className="hidden lg:flex w-[350px] bg-card border-l border-border flex-col">
-          <IntelligencePanel />
+          {intelligencePanelContent}
         </div>
       )}
     </div>
