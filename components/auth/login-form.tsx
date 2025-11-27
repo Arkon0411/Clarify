@@ -29,10 +29,7 @@ export function LoginForm() {
       });
 
       if (isSignedIn) {
-        // Give auth context time to update before redirecting
-        await new Promise(resolve => setTimeout(resolve, 500));
         router.push("/");
-        router.refresh();
       } else if (nextStep.signInStep === "CONFIRM_SIGN_UP") {
         router.push(`/auth/verify?email=${encodeURIComponent(email)}`);
       } else if (nextStep.signInStep === "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED") {
