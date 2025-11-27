@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 
 export function MeetingsList() {
+  const handleStartMeeting = () => {
+    // Generate unique channel name
+    const channelName = `meeting-${Date.now()}`
+    const meetingTitle = "New Meeting"
+    // Navigate to live meeting with channel and title
+    window.location.href = `/meetings/live?channel=${channelName}&title=${encodeURIComponent(meetingTitle)}`
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Header */}
@@ -16,11 +24,9 @@ export function MeetingsList() {
           <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Meetings</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">View meeting history and extracted tasks</p>
         </div>
-        <Button className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" asChild>
-          <Link href="/meetings/live">
-            <Video className="h-4 w-4" />
-            Start Meeting
-          </Link>
+        <Button className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" onClick={handleStartMeeting}>
+          <Video className="h-4 w-4" />
+          Start Meeting
         </Button>
       </div>
 
