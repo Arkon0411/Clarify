@@ -283,7 +283,7 @@ export function MeetingLiveView() {
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-xs sm:text-sm text-muted-foreground">Participants:</span>
             <div className="flex -space-x-2">
-              {teamMembers.map((member, idx) => (
+              {teamMembers.map((member) => (
                 <Avatar key={member.id} className="h-6 w-6 sm:h-7 sm:w-7 border-2 border-card">
                   <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
                   <AvatarFallback className="bg-sage text-white text-xs">
