@@ -96,10 +96,10 @@ export async function POST(request: NextRequest) {
           system_messages: [
             {
               role: "system",
-              content: "You are a helpful meeting assistant. You help facilitate meetings, take notes, and provide helpful insights. Be concise and professional.",
+              content: "You are a passive meeting listener.\n\nCORE INSTRUCTION:\n1. Listen to the conversation.\n2. If the user addresses 'Assistant', 'AI', or 'Bot', answer concisely.\n3. IF YOU ARE NOT ADDRESSED: You must output an empty string \"\". Do not output \"...\", do not output \"(silence)\". Output absolutely nothing.\n\nYour goal is to be invisible until called.",
             },
           ],
-          greeting_message: "Hello! I'm your AI meeting assistant. I'm here to help facilitate this meeting.",
+          greeting_message: "", // Empty greeting - AI should not speak on join
           failure_message: "I'm experiencing some technical difficulties. Please continue without me.",
           params: {
             model: "llama-3.3-70b-versatile",
@@ -137,13 +137,8 @@ export async function POST(request: NextRequest) {
             },
           },
         }),
-        parameters: {
-          silence_config: {
-            timeout_ms: 10000,
-            action: "think",
-            content: "continue conversation",
-          },
-        },
+        // REMOVED silence_config - AI should never speak just because it's quiet
+        // The AI will only respond when explicitly addressed by users
       },
     }
 
@@ -169,6 +164,7 @@ export async function POST(request: NextRequest) {
     console.log("   - Token provided:", !!agentToken)
 
     // Make request to Agora API
+    console.log("🔍 [BACKEND] 3. Action: Firing API Request to Agora...")
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -180,9 +176,10 @@ export async function POST(request: NextRequest) {
 
     const data = await response.text()
     const status = response.status
+    console.log("🔍 [BACKEND] 4. Result: API Response", { status, dataLength: data.length })
 
 
-    // If error, return detailed error info
+    // If error, handle TaskConflict (409) gracefully - agent already exists
     if (!response.ok) {
       let errorData
       try {
@@ -190,6 +187,27 @@ export async function POST(request: NextRequest) {
       } catch {
         errorData = { error: data || `HTTP ${status}: ${response.statusText}` }
       }
+
+      // Handle TaskConflict (409) - agent already active
+      const isTaskConflict = status === 409 || 
+                            errorData.reason === "TaskConflict" ||
+                            errorData.error?.includes("TaskConflict") ||
+                            errorData.message?.includes("TaskConflict")
+
+      if (isTaskConflict) {
+        console.log("✅ Agent already active (TaskConflict), proceeding as success")
+        // Return 200 OK with a success message - frontend treats this as success
+        return NextResponse.json(
+          {
+            agent_id: errorData.agent_id || errorData.agentId || null,
+            message: "Agent already active",
+            note: "Agent was already running, no action needed",
+          },
+          { status: 200 },
+        )
+      }
+
+      // For other errors, return error response
       console.error("Agora API error:", errorData)
       return NextResponse.json(
         {
