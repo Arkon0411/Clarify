@@ -142,6 +142,7 @@ export function MeetingLiveView() {
     remoteUsers,
     isMuted,
     isVideoEnabled,
+    audioLevel,
     join,
     publish,
     leave,
@@ -493,6 +494,35 @@ export function MeetingLiveView() {
                   <MicOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
               )}
+              {/* Audio Level Indicator - Visual feedback when mic is active */}
+              {!isMuted && isPublished && audioLevel > 5 && (
+                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-card/90 backdrop-blur-sm border border-border">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
+                    {/* Audio level bars */}
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-0.5 sm:w-1 rounded-full transition-all duration-100",
+                          audioLevel > (i + 1) * 25
+                            ? "bg-green-500 h-2 sm:h-3"
+                            : audioLevel > i * 25
+                            ? "bg-yellow-500 h-1.5 sm:h-2"
+                            : "bg-gray-400 h-1 sm:h-1.5"
+                        )}
+                        style={{
+                          height: audioLevel > (i + 1) * 25 
+                            ? `${Math.min(12, 8 + (audioLevel - (i + 1) * 25) / 5)}px`
+                            : audioLevel > i * 25
+                            ? `${Math.min(8, 4 + (audioLevel - i * 25) / 5)}px`
+                            : "4px"
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <Mic className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-500" />
+                </div>
+              )}
               {/* Video Off Indicator */}
               {!isVideoEnabled && (
                 <div className="absolute top-2 left-2 sm:top-3 sm:left-3 p-1.5 sm:p-2 rounded-full bg-destructive/90 z-10">
@@ -521,16 +551,35 @@ export function MeetingLiveView() {
             variant="ghost"
             size="icon"
             className={cn(
-              "rounded-full h-10 w-10 sm:h-12 sm:w-12 hover:bg-secondary text-foreground",
+              "rounded-full h-10 w-10 sm:h-12 sm:w-12 hover:bg-secondary text-foreground relative",
               isMuted && "bg-destructive/20 text-destructive hover:bg-destructive/30",
+              !isMuted && audioLevel > 5 && "ring-2 ring-green-500/50",
             )}
             onClick={async () => {
-              console.log('Toggling audio, current state:', isMuted)
-              await toggleAudio(!isMuted)
+              console.log('Toggling audio, current state isMuted:', isMuted)
+              // When isMuted=false (mic is ON), we want to mute it → setEnabled(false) → toggleAudio(false)
+              // When isMuted=true (mic is OFF), we want to unmute it → setEnabled(true) → toggleAudio(true)
+              // So we pass isMuted (the current muted state) to toggle to the opposite
+              const newEnabledState = isMuted // If muted, enable. If not muted, disable.
+              console.log('Calling toggleAudio with enabled:', newEnabledState)
+              await toggleAudio(newEnabledState)
             }}
             disabled={!isPublished}
           >
-            {isMuted ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
+            {isMuted ? (
+              <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <div className="relative flex items-center justify-center">
+                <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+                {/* Audio level indicator - animated bar at bottom of button */}
+                {audioLevel > 5 && (
+                  <div 
+                    className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 sm:h-1 bg-green-500 rounded-full transition-all duration-100"
+                    style={{ width: `${Math.min(80, (audioLevel / 100) * 80)}%` }} 
+                  />
+                )}
+              </div>
+            )}
           </Button>
 
           <Button
