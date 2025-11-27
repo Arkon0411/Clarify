@@ -96,8 +96,8 @@ export function TaskBoard() {
                 {/* Column Content */}
                 <div
                   className={cn(
-                    "flex-1 rounded-xl bg-secondary/50 p-3 space-y-3 transition-colors min-h-[200px]",
-                    isOver && "bg-sage-light/50 ring-2 ring-sage/30",
+                    "flex-1 rounded-xl bg-secondary/50 dark:bg-secondary/70 p-3 space-y-3 transition-colors min-h-[200px]",
+                    isOver && "bg-sage-light/50 dark:bg-sage-light/30 ring-2 ring-sage/30 dark:ring-sage/50",
                   )}
                 >
                   {columnTasks.map((task) => (
