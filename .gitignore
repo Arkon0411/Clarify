@@ -40,5 +40,6 @@ next-env.d.ts
 
 # amplify
 .amplify
-amplify_outputs*
+# amplify_outputs.json is manually configured, so we keep it
+# amplify_outputs*
 amplifyconfiguration*

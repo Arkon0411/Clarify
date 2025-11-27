@@ -1,0 +1,9 @@
+{
+  "version": "1.1",
+  "auth": {
+    "user_pool_id": "ap-southeast-2_sx9h7c6EM",
+    "user_pool_client_id": "4vvvh2nepas98s0ls50u5k893v",
+    "identity_pool_id": "ap-southeast-2:a67aff92-3603-4a56-8813-270dd31e1c86",
+    "aws_region": "ap-southeast-2"
+  }
+}
