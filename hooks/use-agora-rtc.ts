@@ -46,6 +46,7 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
   const [remoteUsers, setRemoteUsers] = useState<RemoteUser[]>([])
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  const [audioLevel, setAudioLevel] = useState(0) // 0-100
 
   const clientRef = useRef<IAgoraRTCClient | null>(null)
   const remoteUsersRef = useRef<Map<UID, RemoteUser>>(new Map())
@@ -228,6 +229,27 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
     localTracksRef.current = localTracks
   }, [localTracks])
 
+  // Monitor audio level for visual feedback
+  useEffect(() => {
+    if (!localTracks.audioTrack || isMuted) {
+      setAudioLevel(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      try {
+        // Get volume level (0-1, multiply by 100 for percentage)
+        const volume = localTracks.audioTrack.getVolumeLevel()
+        setAudioLevel(Math.min(100, Math.max(0, volume * 100)))
+      } catch (error) {
+        // Track might be closed or not ready
+        setAudioLevel(0)
+      }
+    }, 100) // Update every 100ms for smooth animation
+
+    return () => clearInterval(interval)
+  }, [localTracks.audioTrack, isMuted])
+
   // Leave channel
   const leave = useCallback(async () => {
     // Stop local tracks using ref to get latest value
@@ -263,25 +285,48 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
   // Toggle audio
   const toggleAudio = useCallback(
     async (enabled: boolean) => {
-      // Try ref first, then state as fallback
-      const tracks = localTracksRef.current || localTracks
-      if (tracks.audioTrack) {
-        try {
-          console.log('Toggling audio track:', { enabled, trackExists: !!tracks.audioTrack })
-          await tracks.audioTrack.setEnabled(enabled)
-          setIsMuted(!enabled)
-          console.log(`Audio ${enabled ? 'enabled' : 'disabled'} successfully`)
-        } catch (error) {
-          console.error('Failed to toggle audio:', error)
-        }
-      } else {
-        console.warn('Audio track not available', { 
-          refTrack: !!localTracksRef.current?.audioTrack,
-          stateTrack: !!localTracks.audioTrack 
+      // Use ref for immediate access, fallback to state
+      const tracks = localTracksRef.current
+      const audioTrack = tracks?.audioTrack || localTracks.audioTrack
+      
+      if (!audioTrack) {
+        console.warn('Audio track not available for toggling', { 
+          refTrack: !!tracks?.audioTrack,
+          stateTrack: !!localTracks.audioTrack,
+          isPublished
         })
+        return
+      }
+
+      try {
+        // Check current enabled state
+        const currentEnabled = audioTrack.isPlaying !== false
+        console.log('Toggling audio track:', { 
+          requestedEnabled: enabled, 
+          currentEnabled,
+          currentMuted: isMuted,
+          trackExists: !!audioTrack
+        })
+        
+        // Use setEnabled to enable/disable the track
+        await audioTrack.setEnabled(enabled)
+        
+        // Verify it was set correctly
+        // Note: isPlaying might not immediately reflect the change, so we trust the setEnabled call
+        console.log('Audio track setEnabled called, new state should be:', enabled)
+        
+        // Update state - if enabled is true, mic is NOT muted
+        setIsMuted(!enabled)
+        
+        console.log(`Audio ${enabled ? 'enabled' : 'disabled'} successfully. isMuted set to: ${!enabled}`)
+      } catch (error) {
+        console.error('Failed to toggle audio:', error)
+        // Still update state even if there's an error, for UI consistency
+        setIsMuted(!enabled)
+        throw error // Re-throw so caller knows it failed
       }
     },
-    [localTracks], // Include localTracks as dependency to ensure we have latest
+    [localTracks, isMuted, isPublished], // Include dependencies
   )
 
   // Toggle video
@@ -324,6 +369,7 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
     remoteUsers,
     isMuted,
     isVideoEnabled,
+    audioLevel,
     createClient,
     join,
     publish,
