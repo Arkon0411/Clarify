@@ -132,6 +132,7 @@ export function MeetingLiveView() {
   const confirmedTasks = detectedTasks.filter((t) => t.confirmed)
 
   // Intelligence Panel Content Component
+  // eslint-disable-next-line react-hooks/static-components
   const IntelligencePanel = () => (
     <>
       {/* Sidebar Header */}
