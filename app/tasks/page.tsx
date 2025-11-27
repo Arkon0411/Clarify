@@ -8,3 +8,4 @@ export default function TasksPage() {
     </AppLayout>
   )
 }
+

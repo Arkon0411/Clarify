@@ -13,3 +13,4 @@ export const useSidebar = create<SidebarStore>((set) => ({
   close: () => set({ isOpen: false }),
   open: () => set({ isOpen: true }),
 }))
+

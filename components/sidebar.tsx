@@ -7,6 +7,7 @@ import { LayoutDashboard, Kanban, Video, CheckSquare, Settings, User } from "luc
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { currentUser } from "@/lib/mock-data"
 import { useSidebar } from "@/hooks/use-sidebar"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -61,7 +62,7 @@ export function Sidebar({ isMobile }: SidebarProps) {
 
       {/* User Profile */}
       <div className="border-t border-border p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-9 w-9 flex-shrink-0">
             <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
             <AvatarFallback>
@@ -72,6 +73,7 @@ export function Sidebar({ isMobile }: SidebarProps) {
             <p className="text-sm font-medium text-foreground truncate">{currentUser.name}</p>
             <p className="text-xs text-muted-foreground capitalize">{currentUser.role}</p>
           </div>
+          <ThemeToggle />
         </div>
       </div>
     </aside>
