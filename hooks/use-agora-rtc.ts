@@ -253,8 +253,12 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
     const interval = setInterval(() => {
       try {
         // Get volume level (0-1, multiply by 100 for percentage)
-        const volume = localTracks.audioTrack.getVolumeLevel()
-        setAudioLevel(Math.min(100, Math.max(0, volume * 100)))
+        if (localTracks.audioTrack) {
+          const volume = localTracks.audioTrack.getVolumeLevel()
+          setAudioLevel(Math.min(100, Math.max(0, volume * 100)))
+        } else {
+          setAudioLevel(0)
+        }
       } catch (error) {
         // Track might be closed or not ready
         setAudioLevel(0)

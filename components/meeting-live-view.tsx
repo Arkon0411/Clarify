@@ -387,7 +387,7 @@ export function MeetingLiveView() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const toggleTaskConfirmation = (taskId: string) => {
+  const toggleTaskConfirmation = useCallback((taskId: string) => {
     setDetectedTasks((prev: DetectedTask[]) =>
       prev.map((task: DetectedTask) => (task.id === taskId ? { ...task, confirmed: !task.confirmed } : task)),
     )
