@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Kanban, Video, CheckSquare, Settings, User } from "lucide-react"
+import { LayoutDashboard, Kanban, Video, CheckSquare, Settings, User, LogOut } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { currentUser } from "@/lib/mock-data"
+import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/hooks/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useAuth } from "@/lib/auth-context"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -24,6 +25,12 @@ interface SidebarProps {
 export function Sidebar({ isMobile }: SidebarProps) {
   const pathname = usePathname()
   const { close } = useSidebar()
+  const { userProfile, signOut } = useAuth()
+  
+  const handleLogout = async () => {
+    await signOut()
+    if (isMobile) close()
+  }
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
@@ -64,17 +71,24 @@ export function Sidebar({ isMobile }: SidebarProps) {
       <div className="border-t border-border p-4">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-9 w-9 flex-shrink-0">
-            <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
             <AvatarFallback>
               <User className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{currentUser.name}</p>
-            <p className="text-xs text-muted-foreground capitalize">{currentUser.role}</p>
+            <p className="text-sm font-medium text-foreground truncate">{userProfile?.name || "User"}</p>
+            <p className="text-xs text-muted-foreground capitalize">{userProfile?.role?.toLowerCase() || "employee"}</p>
           </div>
           <ThemeToggle />
         </div>
+        <Button 
+          variant="outline" 
+          className="w-full gap-2 text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
       </div>
     </aside>
   )
