@@ -1,11 +1,14 @@
 import { AppLayout } from "@/components/app-layout"
 import { TaskReview } from "@/components/task-review"
+import { ProtectedRoute } from "@/components/protected-route"
 
 export default function ReviewPage() {
   return (
-    <AppLayout>
-      <TaskReview />
-    </AppLayout>
+    <ProtectedRoute>
+      <AppLayout>
+        <TaskReview />
+      </AppLayout>
+    </ProtectedRoute>
   )
 }
 

@@ -1,4 +1,5 @@
 import { AppLayout } from "@/components/app-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,7 +10,8 @@ import { User } from "lucide-react"
 
 export default function SettingsPage() {
   return (
-    <AppLayout>
+    <ProtectedRoute>
+      <AppLayout>
       <div className="p-8 max-w-2xl mx-auto">
         <h1 className="text-2xl font-semibold text-foreground mb-8">Settings</h1>
 
@@ -92,6 +94,7 @@ export default function SettingsPage() {
         <Button className="bg-charcoal hover:bg-charcoal/90">Save Changes</Button>
       </div>
     </AppLayout>
+    </ProtectedRoute>
   )
 }
 

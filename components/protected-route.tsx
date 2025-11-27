@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
-import { AppLayout } from "@/components/app-layout";
-import { ManagerDashboard } from "@/components/manager-dashboard";
-import { EmployeeDashboard } from "@/components/employee-dashboard";
-import { currentUser } from "@/lib/mock-data";
 import { Amplify } from "aws-amplify";
 import { Loader2 } from "lucide-react";
 
@@ -17,9 +13,12 @@ if (typeof window !== 'undefined') {
     .catch(() => console.warn("amplify_outputs.json not found. Run 'npx ampx sandbox' to generate it."));
 }
 
-export default function DashboardPage() {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,17 +26,16 @@ export default function DashboardPage() {
       try {
         await getCurrentUser();
         setIsAuthenticated(true);
-      } catch {
+      } catch (error) {
+        console.error("User not authenticated:", error);
         setIsAuthenticated(false);
         router.push("/auth");
-      } finally {
-        setIsLoading(false);
       }
     }
     checkAuth();
   }, [router]);
 
-  if (isLoading || !isAuthenticated) {
+  if (isAuthenticated === null || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -45,12 +43,5 @@ export default function DashboardPage() {
     );
   }
 
-  // In a real app, this would come from auth context
-  const isManager = currentUser.role === "manager";
-
-  return (
-    <AppLayout>
-      {isManager ? <ManagerDashboard /> : <EmployeeDashboard />}
-    </AppLayout>
-  );
+  return <>{children}</>;
 }
