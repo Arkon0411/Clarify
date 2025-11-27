@@ -1,52 +1,19 @@
-"use client";
+import { AppLayout } from "@/components/app-layout"
+import { ManagerDashboard } from "@/components/manager-dashboard"
+import { currentUser } from "@/lib/mock-data"
 
-import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-import "./../app/app.css";
-import { Amplify } from "aws-amplify";
-import outputs from "@/amplify_outputs.json";
-import "@aws-amplify/ui-react/styles.css";
+export default function DashboardPage() {
+  // In a real app, this would come from auth context
+  const isManager = currentUser.role === "manager"
 
-Amplify.configure(outputs);
+  return <AppLayout>{isManager ? <ManagerDashboard /> : <MemberDashboard />}</AppLayout>
+}
 
-const client = generateClient<Schema>();
-
-export default function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
-
-  function listTodos() {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }
-
-  useEffect(() => {
-    listTodos();
-  }, []);
-
-  function createTodo() {
-    client.models.Todo.create({
-      content: window.prompt("Todo content"),
-    });
-  }
-
+function MemberDashboard() {
   return (
-    <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/">
-          Review next steps of this tutorial.
-        </a>
-      </div>
-    </main>
-  );
+    <div className="p-8">
+      <h1 className="text-2xl font-semibold text-foreground mb-6">My Dashboard</h1>
+      {/* Member dashboard implementation */}
+    </div>
+  )
 }
