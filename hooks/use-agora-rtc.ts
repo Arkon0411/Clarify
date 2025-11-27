@@ -69,6 +69,7 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
     // Set up event handlers
     rtcClient.on("user-published", async (user, mediaType) => {
       try {
+        console.log(`[Agora] User published - UID: ${user.uid}, MediaType: ${mediaType}`)
         await rtcClient.subscribe(user, mediaType)
 
         const remoteUser: RemoteUser = {
@@ -78,14 +79,21 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
         }
 
         remoteUsersRef.current.set(user.uid, remoteUser)
+        console.log(`[Agora] Remote user added - UID: ${user.uid}`, {
+          hasAudio: !!user.audioTrack,
+          hasVideo: !!user.videoTrack,
+        })
 
         // Play audio track
         if (user.audioTrack) {
           user.audioTrack.play()
+          console.log(`[Agora] Playing audio for user ${user.uid}`)
         }
 
         // Update state
-        setRemoteUsers(Array.from(remoteUsersRef.current.values()))
+        const updatedUsers = Array.from(remoteUsersRef.current.values())
+        setRemoteUsers(updatedUsers)
+        console.log(`[Agora] Total remote users: ${updatedUsers.length}`, updatedUsers.map(u => u.uid))
       } catch (error) {
         console.error("Failed to subscribe to user:", error)
       }
@@ -106,8 +114,14 @@ export function useAgoraRTC(options: UseAgoraRTCOptions) {
     })
 
     rtcClient.on("user-left", (user) => {
+      console.log(`[Agora] User left - UID: ${user.uid}`)
       remoteUsersRef.current.delete(user.uid)
       setRemoteUsers(Array.from(remoteUsersRef.current.values()))
+    })
+
+    // Log when connection state changes
+    rtcClient.on("connection-state-change", (curState, revState) => {
+      console.log(`[Agora] Connection state changed: ${revState} -> ${curState}`)
     })
 
     clientRef.current = rtcClient
