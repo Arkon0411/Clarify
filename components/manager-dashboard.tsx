@@ -37,11 +37,16 @@ export function ManagerDashboard() {
               <span className="text-sm">Review Tasks</span>
             </Link>
           </Button>
-          <Button className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" asChild>
-            <Link href="/meetings/live">
-              <Video className="h-4 w-4" />
-              <span className="text-sm">Start Meeting</span>
-            </Link>
+          <Button 
+            className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" 
+            onClick={() => {
+              const channelName = `meeting-${Date.now()}`
+              const meetingTitle = "New Meeting"
+              window.location.href = `/meetings/live?channel=${channelName}&title=${encodeURIComponent(meetingTitle)}`
+            }}
+          >
+            <Video className="h-4 w-4" />
+            <span className="text-sm">Start Meeting</span>
           </Button>
         </div>
       </div>
