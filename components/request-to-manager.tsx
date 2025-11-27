@@ -15,7 +15,6 @@ import {
   AlertCircle,
   User,
   Calendar,
-  CheckCircle2,
   Loader2,
   MessageSquare,
 } from "lucide-react"

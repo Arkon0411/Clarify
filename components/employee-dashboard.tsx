@@ -5,7 +5,6 @@ import { TaskCard } from "./task-card"
 import { Button } from "@/components/ui/button"
 import { mockTasks, currentUser } from "@/lib/mock-data"
 import { CheckCircle2, Clock, MessageSquare, AlertCircle, Sparkles, Send } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 
@@ -28,7 +27,7 @@ export function EmployeeDashboard() {
             Good morning, {currentUser.name.split(" ")[0]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1 text-pretty">
-            Here's your work overview for today
+            Here&apos;s your work overview for today
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">

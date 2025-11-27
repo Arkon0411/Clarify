@@ -64,7 +64,7 @@ export async function GET(
     try {
       const jsonData = JSON.parse(data)
       return NextResponse.json(jsonData, { status })
-    } catch (e) {
+    } catch {
       return NextResponse.json({ message: data, raw: data }, { status })
     }
   } catch (error) {

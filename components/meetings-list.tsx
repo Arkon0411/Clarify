@@ -133,7 +133,7 @@ export function MeetingsList() {
           <DialogHeader>
             <DialogTitle>Create Meeting for Later</DialogTitle>
             <DialogDescription>
-              Enter a title for your meeting. You'll be able to share the link and join later.
+              Enter a title for your meeting. You&apos;ll be able to share the link and join later.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

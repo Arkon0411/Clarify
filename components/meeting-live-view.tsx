@@ -101,12 +101,6 @@ const mockDetectedTasks: DetectedTask[] = [
   },
 ]
 
-const confidenceColors = {
-  high: "bg-confidence-high",
-  medium: "bg-confidence-medium",
-  low: "bg-confidence-low",
-}
-
 export function MeetingLiveView() {
   const searchParams = useSearchParams()
   // Extract values directly to avoid object reference changes causing re-renders
