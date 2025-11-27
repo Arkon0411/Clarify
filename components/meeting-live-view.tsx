@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -122,17 +122,17 @@ export function MeetingLiveView() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const toggleTaskConfirmation = (taskId: string) => {
+  const toggleTaskConfirmation = useCallback((taskId: string) => {
     setDetectedTasks((prev) =>
       prev.map((task) => (task.id === taskId ? { ...task, confirmed: !task.confirmed } : task)),
     )
-  }
+  }, [])
 
   const pendingTasks = detectedTasks.filter((t) => !t.confirmed)
   const confirmedTasks = detectedTasks.filter((t) => t.confirmed)
 
-  // Intelligence Panel JSX - used in multiple places below
-  const intelligencePanelContent = (
+  // Intelligence Panel JSX - memoized to avoid re-creation on every render
+  const intelligencePanelContent = useMemo(() => (
     <>
       {/* Sidebar Header */}
       <div className="px-4 py-3 border-b border-border bg-sage-light/30 dark:bg-sage-light/20">
@@ -235,7 +235,7 @@ export function MeetingLiveView() {
         </div>
       </div>
     </>
-  )
+  ), [isTranscriptOpen, pendingTasks, confirmedTasks, toggleTaskConfirmation])
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-background">
