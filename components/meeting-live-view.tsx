@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAgoraRTC } from "@/hooks/use-agora-rtc"
 import { useAgoraConvoAI } from "@/hooks/use-agora-convo-ai"
+import { useAITranscription } from "@/hooks/use-ai-transcription"
 import type { IRemoteAudioTrack, IRemoteVideoTrack, UID } from "agora-rtc-sdk-ng"
 
 interface RemoteUser {
@@ -127,6 +128,7 @@ export function MeetingLiveView() {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(true)
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [meetingStartTime] = useState(() => Date.now()) // Track when meeting started
   const isMobile = useIsMobile()
 
   // Video container refs
@@ -144,6 +146,7 @@ export function MeetingLiveView() {
   }), [appId, channelName])
 
   const {
+    client,
     isJoined,
     isPublished,
     localTracks,
@@ -164,6 +167,72 @@ export function MeetingLiveView() {
   const remoteUsersRef = useRef<RemoteUser[]>([])
   const isJoinedRef = useRef(false)
   const isPublishedRef = useRef(false)
+
+  // UID to display name mapping
+  const uidToNameMap = useMemo(() => {
+    const map = new Map<UID, string>()
+    // Map local user
+    map.set(agoraUid.current, "You")
+    // Map remote users - you can extend this with actual user data
+    remoteUsers.forEach((user) => {
+      // Try to get name from team members or use a default
+      const teamMember = teamMembers.find((m) => m.id === String(user.uid))
+      if (teamMember) {
+        map.set(user.uid, teamMember.name)
+      } else {
+        // Default naming for unknown users
+        if (String(user.uid) === "10001" || String(user.uid) === "10002") {
+          map.set(user.uid, "AI Assistant")
+        } else {
+          map.set(user.uid, `User ${user.uid}`)
+        }
+      }
+    })
+    return map
+  }, [remoteUsers])
+
+  // Real-time AI transcription - captures audio from Agora and sends to AI service
+  const remoteAudioTracksMap = useMemo(() => {
+    const map = new Map<string | number, IRemoteAudioTrack>()
+    remoteUsers.forEach((user) => {
+      if (user.audioTrack) {
+        map.set(user.uid, user.audioTrack)
+      }
+    })
+    return map
+  }, [remoteUsers])
+
+  const { transcriptHistory } = useAITranscription({
+    localAudioTrack: localTracks.audioTrack,
+    remoteAudioTracks: remoteAudioTracksMap,
+    meetingStartTime,
+    uidToNameMap,
+    localUid: agoraUid.current,
+    localUserName: "You",
+    enabled: isJoined && isPublished, // Only transcribe when meeting is active
+  })
+
+  // Convert transcript segments to the format expected by IntelligencePanel
+  const liveTranscript = useMemo(() => {
+    // Assign speaker colors based on speaker UID
+    const speakerColorMap = new Map<UID, string>()
+    let colorIndex = 0
+
+    return transcriptHistory.map((segment) => {
+      if (!speakerColorMap.has(segment.speakerUid)) {
+        speakerColorMap.set(segment.speakerUid, speakerColors[colorIndex % speakerColors.length])
+        colorIndex++
+      }
+
+      return {
+        id: segment.id,
+        speaker: segment.displayName,
+        speakerColor: speakerColorMap.get(segment.speakerUid) || speakerColors[0],
+        text: segment.text,
+        timestamp: segment.timestamp,
+      }
+    })
+  }, [transcriptHistory])
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -522,7 +591,7 @@ export function MeetingLiveView() {
                       pendingTasks={pendingTasks}
                       confirmedTasks={confirmedTasks}
                       onTaskToggle={toggleTaskConfirmation}
-                      transcript={mockTranscript}
+                      transcript={liveTranscript}
                     />
                   </SheetContent>
                 </Sheet>
@@ -779,7 +848,7 @@ export function MeetingLiveView() {
             pendingTasks={pendingTasks}
             confirmedTasks={confirmedTasks}
             onTaskToggle={toggleTaskConfirmation}
-            transcript={mockTranscript}
+            transcript={liveTranscript}
           />
         </div>
       )}

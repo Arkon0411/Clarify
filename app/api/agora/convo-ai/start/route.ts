@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         },
         asr: {
           language: "en-US",
+          enable_transcription: true, // Enable transcription output
         },
         llm: {
           url: "https://api.groq.com/openai/v1/chat/completions",
