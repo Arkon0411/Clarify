@@ -11,6 +11,7 @@ export interface TranscriptSegment {
   timestamp: string
   text: string
   isFinal: boolean
+  timestampMs?: number // Store actual timestamp in milliseconds for deduplication
 }
 
 interface UseAITranscriptionOptions {
@@ -22,6 +23,10 @@ interface UseAITranscriptionOptions {
   localUserName?: string
   enabled?: boolean
 }
+
+// Voice Activity Detection (VAD) constants
+const MIN_VOLUME_THRESHOLD = 0.01 // RMS threshold (0.01 = -40dB, adjust as needed)
+const DEDUPLICATION_TIME_WINDOW_MS = 5000 // 5 seconds - ignore duplicate transcripts within this window
 
 export function useAITranscription({
   localAudioTrack,
@@ -58,24 +63,82 @@ export function useAITranscription({
     [uidToNameMap, localUid, localUserName],
   )
 
+  // Calculate RMS (Root Mean Square) volume from audio blob
+  const calculateRMSVolume = useCallback(async (audioBlob: Blob): Promise<number> => {
+    try {
+      // Create AudioContext to decode audio
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      
+      // Convert blob to ArrayBuffer
+      const arrayBuffer = await audioBlob.arrayBuffer()
+      
+      // Decode audio data
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      
+      // Get audio samples (use first channel)
+      const channelData = audioBuffer.getChannelData(0)
+      const length = channelData.length
+      
+      if (length === 0) {
+        return 0
+      }
+      
+      // Calculate RMS: sqrt(sum(samples^2) / length)
+      let sumSquares = 0
+      for (let i = 0; i < length; i++) {
+        sumSquares += channelData[i] * channelData[i]
+      }
+      
+      const rms = Math.sqrt(sumSquares / length)
+      
+      // Close AudioContext to free resources
+      await audioContext.close()
+      
+      return rms
+    } catch (error) {
+      console.warn(`[AI Transcription] Failed to calculate RMS volume:`, error)
+      // If we can't calculate volume, assume it's not silent (return 1.0)
+      // This prevents blocking valid audio due to decoding errors
+      return 1.0
+    }
+  }, [])
+
   const processTranscriptionResult = useCallback(
     (text: string, userId: string | number, isFinal: boolean = true) => {
       if (!text || text.trim().length === 0) return
 
-      const elapsedSeconds = Math.floor((Date.now() - meetingStartTime) / 1000)
+      const currentTime = Date.now()
+      const elapsedSeconds = Math.floor((currentTime - meetingStartTime) / 1000)
       const timestamp = formatTimestamp(elapsedSeconds)
       const displayName = getDisplayName(userId)
+      const trimmedText = text.trim()
 
-      const segment: TranscriptSegment = {
-        id: generateSegmentId(),
-        speakerUid: userId,
-        displayName,
-        timestamp,
-        text: text.trim(),
-        isFinal,
-      }
-
+      // DEDUPLICATION: Check if this is a duplicate of the last entry
       setTranscriptHistory((prev) => {
+        if (prev.length > 0) {
+          const lastEntry = prev[prev.length - 1]
+          const lastEntryTime = lastEntry.timestampMs || meetingStartTime
+          const timeDiff = currentTime - lastEntryTime
+          
+          // Check if text is identical and within deduplication window
+          if (lastEntry.text.trim().toLowerCase() === trimmedText.toLowerCase() && 
+              lastEntry.speakerUid === userId &&
+              timeDiff < DEDUPLICATION_TIME_WINDOW_MS) {
+            console.log(`[AI Transcription] 🚫 Skipping duplicate transcript: "${trimmedText}" (last entry was ${timeDiff}ms ago)`)
+            return prev // Don't add duplicate
+          }
+        }
+
+        const segment: TranscriptSegment = {
+          id: generateSegmentId(),
+          speakerUid: userId,
+          displayName,
+          timestamp,
+          text: trimmedText,
+          isFinal,
+          timestampMs: currentTime, // Store actual timestamp for deduplication
+        }
+
         const updated = [...prev, segment]
         console.log(`[AI Transcription] ✅ Added transcript segment (total: ${updated.length}):`, segment)
         return updated
@@ -285,13 +348,25 @@ export function useAITranscription({
           // Create blob with explicit type - this is a complete WebM file with headers
           const audioBlob = new Blob(chunksToSend, { type: mimeType })
           
-          console.log(`[AI Transcription] 📤 Sending complete WebM file: ${audioBlob.size} bytes for user ${userId}`)
+          console.log(`[AI Transcription] 📤 Checking audio volume before sending: ${audioBlob.size} bytes for user ${userId}`)
           
           try {
-            // Send to transcription API
-            await sendAudioForTranscription(audioBlob, userId)
-            console.log(`[AI Transcription] ✅ Successfully transcribed chunk for user ${userId} - ready for next recording`)
-            reconnectAttempts = 0 // Reset on success
+            // VOICE ACTIVITY DETECTION: Calculate RMS volume before sending
+            const rmsVolume = await calculateRMSVolume(audioBlob)
+            console.log(`[AI Transcription] 🔊 Audio RMS volume: ${rmsVolume.toFixed(4)} (threshold: ${MIN_VOLUME_THRESHOLD})`)
+            
+            // Skip silent chunks to prevent hallucination
+            if (rmsVolume < MIN_VOLUME_THRESHOLD) {
+              console.log(`[AI Transcription] 🔇 Skipping silent chunk (RMS: ${rmsVolume.toFixed(4)} < threshold: ${MIN_VOLUME_THRESHOLD}) - not sending to API`)
+              // Don't send to API, but continue the loop
+              reconnectAttempts = 0
+            } else {
+              // Volume is above threshold - send to transcription API
+              console.log(`[AI Transcription] 📤 Sending complete WebM file: ${audioBlob.size} bytes for user ${userId}`)
+              await sendAudioForTranscription(audioBlob, userId)
+              console.log(`[AI Transcription] ✅ Successfully transcribed chunk for user ${userId} - ready for next recording`)
+              reconnectAttempts = 0 // Reset on success
+            }
           } catch (error) {
             // Error occurred - log it but CONTINUE THE LOOP
             const errorMsg = error instanceof Error ? error.message : String(error)
