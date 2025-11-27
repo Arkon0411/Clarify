@@ -8,6 +8,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAgoraRTC } from "@/hooks/use-agora-rtc"
+import { useAgoraConvoAI } from "@/hooks/use-agora-convo-ai"
+import type { IRemoteAudioTrack, IRemoteVideoTrack, UID } from "agora-rtc-sdk-ng"
+
+interface RemoteUser {
+  uid: UID
+  audioTrack?: IRemoteAudioTrack
+  videoTrack?: IRemoteVideoTrack
+}
 import { IntelligencePanel } from "@/components/intelligence-panel"
 import { teamMembers } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
@@ -150,12 +158,21 @@ export function MeetingLiveView() {
     toggleVideo,
   } = useAgoraRTC(agoraOptions)
 
+  // Agora Conversational AI - AI persona that joins automatically
+  const { agentId, start: startConvoAI, stop: stopConvoAI } = useAgoraConvoAI()
+  const agentIdRef = useRef<string | null>(null)
+  
+  // Keep agentId in ref for cleanup
+  useEffect(() => {
+    agentIdRef.current = agentId
+  }, [agentId])
+
   // Timer - only run when joined
   useEffect(() => {
     if (!isJoined) return
 
     const timer = setInterval(() => {
-      setElapsedTime((prev) => prev + 1)
+      setElapsedTime((prev: number) => prev + 1)
     }, 1000)
     return () => clearInterval(timer)
   }, [isJoined])
@@ -208,6 +225,62 @@ export function MeetingLiveView() {
 
         // Create and publish tracks
         await publish()
+
+        // Start AI agent automatically after joining
+        if (isMounted) {
+          // Wait for user to be fully connected and tracks published
+          // The agent needs the user to be in the channel first
+          const waitForConnection = async (maxWait: number = 10000) => {
+            const startTime = Date.now()
+            while (Date.now() - startTime < maxWait) {
+              if (isJoined && isPublished) {
+                // Double check by waiting a bit more for stability
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                return true
+              }
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+            return isJoined && isPublished
+          }
+
+          try {
+            // Wait up to 10 seconds for connection
+            const isConnected = await waitForConnection(10000)
+            
+            if (!isConnected) {
+              console.warn("User not fully connected, skipping AI agent start")
+              return
+            }
+
+            // Start the agent with retry logic
+            const startAgentWithRetry = async (retries: number = 3) => {
+              for (let i = 0; i < retries; i++) {
+                try {
+                  const agentId = await startConvoAI({
+                    channel: channelName,
+                    agentRtcUid: 10001,
+                    remoteRtcUids: [agoraUid.current],
+                    appId: appId,
+                  })
+                  
+                  agentIdRef.current = agentId
+                  return agentId
+                } catch (error) {
+                  if (i === retries - 1) {
+                    throw error
+                  }
+                  // Wait before retry (exponential backoff)
+                  await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+                }
+              }
+            }
+
+            await startAgentWithRetry(3)
+          } catch (aiError) {
+            // Don't block the meeting if AI fails to start
+            console.error("Failed to start AI agent after retries:", aiError)
+          }
+        }
       } catch (error) {
         console.error("Failed to initialize meeting:", error)
         if (isMounted) {
@@ -223,6 +296,10 @@ export function MeetingLiveView() {
 
     return () => {
       isMounted = false
+      // Stop AI agent before leaving
+      if (agentIdRef.current) {
+        stopConvoAI().catch(console.error)
+      }
       leave()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,7 +351,7 @@ export function MeetingLiveView() {
 
   // Play remote video tracks
   useEffect(() => {
-    remoteUsers.forEach((user) => {
+    remoteUsers.forEach((user: RemoteUser) => {
       if (user.videoTrack) {
         const container = remoteVideoRefs.current.get(user.uid)
         if (container) {
@@ -287,7 +364,7 @@ export function MeetingLiveView() {
     })
 
     return () => {
-      remoteUsers.forEach((user) => {
+      remoteUsers.forEach((user: RemoteUser) => {
         if (user.videoTrack) {
           user.videoTrack.stop()
         }
@@ -311,27 +388,27 @@ export function MeetingLiveView() {
   }
 
   const toggleTaskConfirmation = (taskId: string) => {
-    setDetectedTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, confirmed: !task.confirmed } : task)),
+    setDetectedTasks((prev: DetectedTask[]) =>
+      prev.map((task: DetectedTask) => (task.id === taskId ? { ...task, confirmed: !task.confirmed } : task)),
     )
   }
 
   // Memoize Switch callback to prevent re-renders
   const handleConfidentialChange = useCallback((checked: boolean) => {
     // Use functional update to avoid dependency on isConfidential
-    setIsConfidential((prev) => {
+    setIsConfidential((prev: boolean) => {
       // Only update if value actually changed
       if (prev === checked) return prev
       return checked
     })
   }, [])
 
-  const pendingTasks = detectedTasks.filter((t) => !t.confirmed)
-  const confirmedTasks = detectedTasks.filter((t) => t.confirmed)
+  const pendingTasks = detectedTasks.filter((t: DetectedTask) => !t.confirmed)
+  const confirmedTasks = detectedTasks.filter((t: DetectedTask) => t.confirmed)
 
   // Memoize callbacks to prevent re-renders
   const handleTranscriptToggle = useCallback(() => {
-    setIsTranscriptOpen((prev) => !prev)
+    setIsTranscriptOpen((prev: boolean) => !prev)
   }, [])
 
   return (
@@ -429,14 +506,23 @@ export function MeetingLiveView() {
 
         {/* Video Grid */}
         <div className="flex-1 p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 auto-rows-fr overflow-y-auto">
+          {/* Debug: Show remote users count */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="fixed top-20 right-4 bg-black/80 text-white p-2 rounded text-xs z-50">
+              Remote Users: {remoteUsers.length}
+              {remoteUsers.map((u: RemoteUser) => ` UID:${u.uid}`)}
+              {agentId && ` | Agent: ${agentId}`}
+            </div>
+          )}
+          
           {/* Remote Users */}
-          {remoteUsers.map((user) => (
+          {remoteUsers.map((user: RemoteUser) => (
             <div
               key={user.uid}
               className="relative rounded-lg sm:rounded-xl bg-card border border-border overflow-hidden flex items-center justify-center min-h-[150px] sm:min-h-[200px] shadow-sm"
             >
               <div
-                ref={(el) => {
+                ref={(el: HTMLDivElement | null) => {
                   if (el) remoteVideoRefs.current.set(user.uid, el)
                 }}
                 className="w-full h-full"
@@ -452,7 +538,11 @@ export function MeetingLiveView() {
               )}
               {/* Name Overlay */}
               <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md bg-card/90 backdrop-blur-sm border border-border">
-                <span className="text-xs sm:text-sm font-medium text-foreground">User {String(user.uid)}</span>
+                <span className="text-xs sm:text-sm font-medium text-foreground">
+                  {String(user.uid) === "10001" || String(user.uid) === "10002" 
+                    ? "AI Assistant" 
+                    : `User ${String(user.uid)}`}
+                </span>
               </div>
               {/* Mic Status Indicator */}
               {!user.audioTrack && (
