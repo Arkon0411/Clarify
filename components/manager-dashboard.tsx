@@ -27,7 +27,7 @@ export function ManagerDashboard() {
             Good morning, {currentUser.name.split(" ")[0]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1 text-pretty">
-            Here's what's happening with your team today
+            Here&apos;s what&apos;s happening with your team today
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
@@ -76,7 +76,7 @@ export function ManagerDashboard() {
         {/* Today's Tasks */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">Today's Tasks</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">Today&apos;s Tasks</h2>
             <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 text-xs sm:text-sm" asChild>
               <Link href="/tasks">
                 View all
