@@ -10,12 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 
 export function ManagerDashboard() {
-  const todoCount = mockTasks.filter((t) => t.status === "todo").length
-  const inProgressCount = mockTasks.filter((t) => t.status === "in-progress").length
-  const pendingApproval = mockTasks.filter((t) => !t.approved).length
+  const todoCount = mockTasks.filter((t) => t.status === "TODO").length
+  const inProgressCount = mockTasks.filter((t) => t.status === "IN_PROGRESS").length
+  const pendingApproval = mockTasks.filter((t) => t.approved === false).length
   const lowConfidenceTasks = mockTasks.filter((t) => t.confidence === "low").length
 
-  const todaysTasks = mockTasks.filter((t) => t.status !== "done").slice(0, 3)
+  const todaysTasks = mockTasks.filter((t) => t.status && t.status !== "COMPLETED").slice(0, 3)
   const recentMeetings = mockMeetings.slice(0, 3)
 
   return (

@@ -2,28 +2,57 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { mockTasks } from "@/lib/mock-data"
-import type { Task, TaskStatus } from "@/lib/types"
+import { useState, useEffect, useCallback } from "react"
+import type { Task } from "@/lib/types"
+import { useAuth } from "@/lib/auth-context"
+import { getTasksByOrganization, updateTask } from "@/lib/database-operations"
 import { TaskCard } from "./task-card"
 import { Button } from "@/components/ui/button"
 import { Plus, Filter } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
-const columns: { id: TaskStatus; title: string }[] = [
-  { id: "todo", title: "To Do" },
-  { id: "in-progress", title: "In Progress" },
-  { id: "review", title: "Review" },
-  { id: "done", title: "Done" },
+type DBTaskStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED" | "BLOCKED"
+type TaskStatus = "todo" | "in-progress" | "review" | "done"
+
+const columns: { id: TaskStatus; dbStatus: DBTaskStatus; title: string }[] = [
+  { id: "todo", dbStatus: "TODO", title: "To Do" },
+  { id: "in-progress", dbStatus: "IN_PROGRESS", title: "In Progress" },
+  { id: "review", dbStatus: "IN_REVIEW", title: "Review" },
+  { id: "done", dbStatus: "COMPLETED", title: "Done" },
 ]
 
 export function TaskBoard() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks)
+  const { userProfile } = useAuth()
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
 
+  const loadTasks = useCallback(async () => {
+    if (!userProfile?.organizationId) return
+    
+    try {
+      setIsLoading(true)
+      const data = await getTasksByOrganization(userProfile.organizationId)
+      setTasks(data)
+    } catch (error) {
+      console.error("Failed to load tasks:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userProfile?.organizationId])
+
+  useEffect(() => {
+    if (userProfile?.organizationId) {
+      loadTasks()
+    }
+  }, [userProfile?.organizationId, loadTasks])
+
   const getTasksByStatus = (status: TaskStatus) => {
-    return tasks.filter((task) => task.status === status)
+    const column = columns.find(c => c.id === status)
+    if (!column) return []
+    return tasks.filter((task) => task.status === column.dbStatus)
   }
 
   const handleDragStart = (task: Task) => {
@@ -40,12 +69,45 @@ export function TaskBoard() {
     setDragOverColumn(status)
   }
 
-  const handleDrop = (status: TaskStatus) => {
-    if (draggedTask && draggedTask.status !== status) {
-      setTasks((prev) => prev.map((task) => (task.id === draggedTask.id ? { ...task, status } : task)))
+  const handleDrop = async (status: TaskStatus) => {
+    if (!draggedTask) return
+    
+    const column = columns.find(c => c.id === status)
+    if (!column) return
+    
+    if (draggedTask.status !== column.dbStatus) {
+      try {
+        // Update in database
+        const updates: { status: DBTaskStatus; completedAt?: string } = { status: column.dbStatus }
+        if (column.dbStatus === "COMPLETED") {
+          updates.completedAt = new Date().toISOString()
+        }
+        
+        await updateTask(draggedTask.id, updates)
+        
+        // Update local state
+        setTasks((prev) => 
+          prev.map((task) => 
+            task.id === draggedTask.id 
+              ? { ...task, ...updates } 
+              : task
+          )
+        )
+      } catch (error) {
+        console.error("Failed to update task:", error)
+        alert("Failed to update task status")
+      }
     }
     setDraggedTask(null)
     setDragOverColumn(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Spinner className="h-8 w-8" />
+      </div>
+    )
   }
 
   return (
@@ -61,9 +123,9 @@ export function TaskBoard() {
             <Filter className="h-4 w-4" />
             Filter
           </Button>
-          <Button className="gap-2 bg-charcoal hover:bg-charcoal/90">
+          <Button className="gap-2 bg-charcoal hover:bg-charcoal/90" onClick={loadTasks}>
             <Plus className="h-4 w-4" />
-            Add Task
+            Refresh
           </Button>
         </div>
       </div>
@@ -108,7 +170,7 @@ export function TaskBoard() {
                       onDragEnd={handleDragEnd}
                       className={cn("cursor-grab active:cursor-grabbing", draggedTask?.id === task.id && "opacity-50")}
                     >
-                      <TaskCard task={task} isDragging={draggedTask?.id === task.id} />
+                      <TaskCard task={task} isDragging={draggedTask?.id === task.id} onUpdate={loadTasks} />
                     </div>
                   ))}
 

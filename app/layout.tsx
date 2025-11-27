@@ -4,6 +4,9 @@ import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import ConfigureAmplifyClientSide from "@/lib/amplify-config"
+import { AuthProvider } from "@/lib/auth-context"
+import { ProtectedRoute } from "@/components/protected-route"
 import "./globals.css"
 
 const inter = Inter({
@@ -30,15 +33,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <ConfigureAmplifyClientSide />
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <ProtectedRoute>
+              {children}
+            </ProtectedRoute>
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

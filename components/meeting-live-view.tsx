@@ -101,11 +101,12 @@ const mockDetectedTasks: DetectedTask[] = [
   },
 ]
 
-const confidenceColors = {
-  high: "bg-confidence-high",
-  medium: "bg-confidence-medium",
-  low: "bg-confidence-low",
-}
+// Confidence colors for transcript display (future use)
+// const confidenceColors = {
+//   high: "bg-confidence-high",
+//   medium: "bg-confidence-medium",
+//   low: "bg-confidence-low",
+// }
 
 export function MeetingLiveView() {
   const searchParams = useSearchParams()

@@ -47,7 +47,7 @@ export async function POST(
     try {
       const jsonData = JSON.parse(data)
       return NextResponse.json(jsonData, { status })
-    } catch (e) {
+    } catch {
       // If response is not JSON, return as text
       return NextResponse.json({ message: data }, { status })
     }

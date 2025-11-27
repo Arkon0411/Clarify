@@ -29,7 +29,7 @@ export function TaskReview() {
   const isManager = currentUser.role === "manager"
 
   // Filter tasks based on role
-  const displayTasks = isManager ? tasks : tasks.filter((t) => t.owner.id === currentUser.id)
+  const displayTasks = isManager ? tasks : tasks.filter((t) => t.owner && t.owner.id === currentUser.id)
 
   const pendingTasks = displayTasks.filter((t) => !t.approved)
   const approvedTasks = displayTasks.filter((t) => t.approved)
@@ -115,19 +115,23 @@ export function TaskReview() {
           <div className="space-y-3">
             {approvedTasks.map((task) => (
               <div key={task.id} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
-                <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", confidenceColors[task.confidence])} />
+                <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", task.confidence ? confidenceColors[task.confidence] : "bg-muted")} />
                 <span className="flex-1 text-sm text-foreground">{task.title}</span>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={task.owner.avatar || "/placeholder.svg"} alt={task.owner.name} />
-                      <AvatarFallback className="text-xs">{task.owner.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span>{task.owner.name.split(" ")[0]}</span>
-                  </div>
-                  <span>
-                    Due {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
+                  {task.owner && (
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="h-5 w-5">
+                        <AvatarImage src={task.owner.avatar || "/placeholder.svg"} alt={task.owner.name} />
+                        <AvatarFallback className="text-xs">{task.owner.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span>{task.owner.name.split(" ")[0]}</span>
+                    </div>
+                  )}
+                  {task.dueDate && (
+                    <span>
+                      Due {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -178,10 +182,12 @@ function TaskReviewCard({
     <div className="rounded-xl bg-card border border-border p-5 shadow-sm">
       <div className="flex items-start gap-4">
         {/* Confidence Indicator */}
-        <div className="flex flex-col items-center gap-1 pt-1">
-          <span className={cn("h-3 w-3 rounded-full", confidenceColors[task.confidence])} />
-          <span className="text-[10px] text-muted-foreground capitalize">{confidenceLabels[task.confidence]}</span>
-        </div>
+        {task.confidence && (
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <span className={cn("h-3 w-3 rounded-full", confidenceColors[task.confidence])} />
+            <span className="text-[10px] text-muted-foreground capitalize">{confidenceLabels[task.confidence]}</span>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -222,10 +228,11 @@ function TaskReviewCard({
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-4">
             {/* Owner */}
-            <div className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-              {isManager ? (
-                <Select value={task.owner.id} onValueChange={onUpdateOwner}>
+            {task.owner && (
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4 text-muted-foreground" />
+                {isManager ? (
+                  <Select value={task.owner.id} onValueChange={onUpdateOwner}>
                   <SelectTrigger className="h-8 w-36 text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -252,7 +259,8 @@ function TaskReviewCard({
                   {task.owner.name}
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Due Date */}
             <div className="flex items-center gap-2">
@@ -260,17 +268,17 @@ function TaskReviewCard({
               {isManager ? (
                 <Input
                   type="date"
-                  value={task.dueDate}
+                  value={task.dueDate || ""}
                   onChange={(e) => onUpdateDate(e.target.value)}
                   className="h-8 w-36 text-sm"
                 />
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  {new Date(task.dueDate).toLocaleDateString("en-US", {
+                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
-                  })}
+                  }) : "No due date"}
                 </span>
               )}
             </div>
