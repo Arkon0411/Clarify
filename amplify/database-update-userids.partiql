@@ -1,0 +1,162 @@
+-- ========================================
+-- Clarify Database UPDATE Scripts
+-- Fix User IDs with Actual Cognito Subs
+-- ========================================
+-- Run these in AWS Console > DynamoDB > PartiQL editor
+
+-- Project Manager ID: 499e6458-10f1-70a6-ae87-1447c9ffc8cd
+-- Employee ID: 39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4
+
+-- ========================================
+-- UPDATE USER PROFILES
+-- ========================================
+
+-- Update Project Manager Profile
+UPDATE "UserProfile-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET userId = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'user-profile-pm-001';
+
+-- Update Employee Profile
+UPDATE "UserProfile-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET userId = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'user-profile-emp-001';
+
+-- ========================================
+-- UPDATE ORGANIZATION
+-- ========================================
+
+UPDATE "Organization-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET ownerId = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'org-001';
+
+-- ========================================
+-- UPDATE MEETING
+-- ========================================
+
+UPDATE "Meeting-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET createdBy = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    participants = ['499e6458-10f1-70a6-ae87-1447c9ffc8cd', '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4'],
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'meeting-001';
+
+-- ========================================
+-- UPDATE TRANSCRIPTS
+-- ========================================
+
+-- Transcript 1 (PM)
+UPDATE "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET userId = '499e6458-10f1-70a6-ae87-1447c9ffc8cd'
+WHERE id = 'transcript-001';
+
+-- Transcript 2 (Employee)
+UPDATE "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET userId = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4'
+WHERE id = 'transcript-002';
+
+-- Transcript 3 (PM)
+UPDATE "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET userId = '499e6458-10f1-70a6-ae87-1447c9ffc8cd'
+WHERE id = 'transcript-003';
+
+-- ========================================
+-- UPDATE TASKS
+-- ========================================
+
+-- Task 1
+UPDATE "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET assignedTo = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4',
+    assignedBy = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'task-001';
+
+-- Task 2
+UPDATE "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET assignedTo = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4',
+    assignedBy = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'task-002';
+
+-- Task 3
+UPDATE "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET assignedTo = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4',
+    assignedBy = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'task-003';
+
+-- ========================================
+-- UPDATE TICKET
+-- ========================================
+
+UPDATE "Ticket-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET createdBy = '39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4',
+    assignedTo = '499e6458-10f1-70a6-ae87-1447c9ffc8cd',
+    updatedAt = '2025-11-28T12:00:00Z'
+WHERE id = 'ticket-001';
+
+-- ========================================
+-- UPDATE ORGANIZATION INVITE
+-- ========================================
+
+UPDATE "OrganizationInvite-jf4jz3si6fhonl7xt4kftaebbq-NONE"
+SET invitedBy = '499e6458-10f1-70a6-ae87-1447c9ffc8cd'
+WHERE id = 'invite-001';
+
+-- ========================================
+-- VERIFICATION QUERIES
+-- ========================================
+-- Run these after updates to verify everything is correct
+
+-- Check User Profiles
+SELECT id, userId, email, name, role FROM "UserProfile-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE id IN ('user-profile-pm-001', 'user-profile-emp-001');
+
+-- Check Organization
+SELECT id, name, ownerId FROM "Organization-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE id = 'org-001';
+
+-- Check Meeting
+SELECT id, title, createdBy, participants FROM "Meeting-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE id = 'meeting-001';
+
+-- Check Transcripts
+SELECT id, userId, userName FROM "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE meetingId = 'meeting-001';
+
+-- Check Tasks
+SELECT id, title, assignedTo, assignedBy FROM "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE organizationId = 'org-001';
+
+-- Check Ticket
+SELECT id, subject, createdBy, assignedTo FROM "Ticket-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE id = 'ticket-001';
+
+-- Check Invite
+SELECT id, email, invitedBy FROM "OrganizationInvite-jf4jz3si6fhonl7xt4kftaebbq-NONE" 
+WHERE id = 'invite-001';
+
+-- ========================================
+-- EXPECTED RESULTS
+-- ========================================
+-- After running updates, you should see:
+-- 
+-- User Profiles:
+--   - user-profile-pm-001: userId = 499e6458-10f1-70a6-ae87-1447c9ffc8cd
+--   - user-profile-emp-001: userId = 39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4
+--
+-- Organization:
+--   - org-001: ownerId = 499e6458-10f1-70a6-ae87-1447c9ffc8cd
+--
+-- Meeting:
+--   - meeting-001: createdBy = 499e6458-10f1-70a6-ae87-1447c9ffc8cd
+--                  participants = [499e6458-10f1-70a6-ae87-1447c9ffc8cd, 39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4]
+--
+-- All Tasks:
+--   - assignedTo = 39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4 (Employee)
+--   - assignedBy = 499e6458-10f1-70a6-ae87-1447c9ffc8cd (PM)
+--
+-- Ticket:
+--   - createdBy = 39aef4c8-e0b1-70d7-fa41-2ebb04f4b8f4 (Employee)
+--   - assignedTo = 499e6458-10f1-70a6-ae87-1447c9ffc8cd (PM)

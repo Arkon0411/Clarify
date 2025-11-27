@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
 
-const publicPaths = ["/auth/login", "/auth/register", "/auth/verify", "/auth/forgot-password"];
+const publicPaths = ["/auth/login", "/auth/register", "/auth/verify", "/auth/forgot-password", "/setup/organization"];
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, userProfile } = useAuth();

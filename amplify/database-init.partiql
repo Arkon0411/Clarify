@@ -12,7 +12,7 @@
 -- This represents the UserProfile after Cognito registration
 -- Replace 'PM_COGNITO_SUB_HERE' with actual Cognito user sub after registration
 
-INSERT INTO "UserProfile" VALUE {
+INSERT INTO "UserProfile-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'user-profile-pm-001',
   'userId': 'PM_COGNITO_SUB_HERE',
   'email': 'projectmanager@clarify.com',
@@ -29,7 +29,7 @@ INSERT INTO "UserProfile" VALUE {
 -- SAMPLE EMPLOYEE USER
 -- ========================================
 
-INSERT INTO "UserProfile" VALUE {
+INSERT INTO "UserProfile-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'user-profile-emp-001',
   'userId': 'EMP_COGNITO_SUB_HERE',
   'email': 'employee@clarify.com',
@@ -46,7 +46,7 @@ INSERT INTO "UserProfile" VALUE {
 -- SAMPLE ORGANIZATION
 -- ========================================
 
-INSERT INTO "Organization" VALUE {
+INSERT INTO "Organization-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'org-001',
   'name': 'Acme Software Inc',
   'ownerId': 'PM_COGNITO_SUB_HERE',
@@ -58,7 +58,7 @@ INSERT INTO "Organization" VALUE {
 -- SAMPLE MEETING
 -- ========================================
 
-INSERT INTO "Meeting" VALUE {
+INSERT INTO "Meeting-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'meeting-001',
   'organizationId': 'org-001',
   'title': 'Q4 Sprint Planning',
@@ -77,7 +77,7 @@ INSERT INTO "Meeting" VALUE {
 -- SAMPLE TRANSCRIPTS
 -- ========================================
 
-INSERT INTO "Transcript" VALUE {
+INSERT INTO "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'transcript-001',
   'meetingId': 'meeting-001',
   'userId': 'PM_COGNITO_SUB_HERE',
@@ -89,7 +89,7 @@ INSERT INTO "Transcript" VALUE {
   'createdAt': '2025-11-27T14:05:00Z'
 };
 
-INSERT INTO "Transcript" VALUE {
+INSERT INTO "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'transcript-002',
   'meetingId': 'meeting-001',
   'userId': 'EMP_COGNITO_SUB_HERE',
@@ -101,7 +101,7 @@ INSERT INTO "Transcript" VALUE {
   'createdAt': '2025-11-27T14:05:30Z'
 };
 
-INSERT INTO "Transcript" VALUE {
+INSERT INTO "Transcript-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'transcript-003',
   'meetingId': 'meeting-001',
   'userId': 'PM_COGNITO_SUB_HERE',
@@ -117,7 +117,7 @@ INSERT INTO "Transcript" VALUE {
 -- SAMPLE TASKS (Auto-generated from AI)
 -- ========================================
 
-INSERT INTO "Task" VALUE {
+INSERT INTO "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'task-001',
   'organizationId': 'org-001',
   'meetingId': 'meeting-001',
@@ -136,7 +136,7 @@ INSERT INTO "Task" VALUE {
   'completedAt': NULL
 };
 
-INSERT INTO "Task" VALUE {
+INSERT INTO "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'task-002',
   'organizationId': 'org-001',
   'meetingId': 'meeting-001',
@@ -155,7 +155,7 @@ INSERT INTO "Task" VALUE {
   'completedAt': NULL
 };
 
-INSERT INTO "Task" VALUE {
+INSERT INTO "Task-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'task-003',
   'organizationId': 'org-001',
   'meetingId': 'meeting-001',
@@ -178,7 +178,7 @@ INSERT INTO "Task" VALUE {
 -- SAMPLE TICKET (Employee Request)
 -- ========================================
 
-INSERT INTO "Ticket" VALUE {
+INSERT INTO "Ticket-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'ticket-001',
   'organizationId': 'org-001',
   'taskId': 'task-002',
@@ -199,7 +199,7 @@ INSERT INTO "Ticket" VALUE {
 -- SAMPLE ORGANIZATION INVITE
 -- ========================================
 
-INSERT INTO "OrganizationInvite" VALUE {
+INSERT INTO "OrganizationInvite-jf4jz3si6fhonl7xt4kftaebbq-NONE" VALUE {
   'id': 'invite-001',
   'organizationId': 'org-001',
   'email': 'newdev@clarify.com',

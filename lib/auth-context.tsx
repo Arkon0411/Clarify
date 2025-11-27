@@ -99,8 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile = await createUserProfile(currentUser);
       }
 
+      console.log("Auth state updated:", { userId: currentUser.userId, hasProfile: !!profile });
       setIsLoading(false);
-    } catch {
+    } catch (error) {
+      console.log("No authenticated user:", error);
       setUser(null);
       setUserProfile(null);
       setIsLoading(false);
