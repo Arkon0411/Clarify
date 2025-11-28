@@ -7,6 +7,23 @@ backend:
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
+    preBuild:
+      commands:
+        - echo "NEXT_PUBLIC_AGORA_APP_ID=$NEXT_PUBLIC_AGORA_APP_ID" >> .env
+        - echo "AGORA_APP_ID=$AGORA_APP_ID" >> .env
+        - echo "AGORA_APP_CERTIFICATE=$AGORA_APP_CERTIFICATE" >> .env
+        - echo "AGORA_REST_KEY=$AGORA_REST_KEY" >> .env
+        - echo "AGORA_REST_SECRET=$AGORA_REST_SECRET" >> .env
+        - echo "GROQ_KEY=$GROQ_KEY" >> .env
+        - echo "AVATAR_AKOOL_KEY=$AVATAR_AKOOL_KEY" >> .env
+        - echo "ISSUER_URL=$ISSUER_URL" >> .env
+        - echo "CALLBACK_URL=$CALLBACK_URL" >> .env
+        - echo "LOGOUT_URL=$LOGOUT_URL" >> .env
+        - echo "NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION" >> .env
+        - echo "NEXT_PUBLIC_USER_POOL_ID=$NEXT_PUBLIC_USER_POOL_ID" >> .env
+        - echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=$NEXT_PUBLIC_USER_POOL_CLIENT_ID" >> .env
+        - echo "NEXT_PUBLIC_COGNITO_DOMAIN=$NEXT_PUBLIC_COGNITO_DOMAIN" >> .env
+        - echo "NEXT_PUBLIC_APPSYNC_URL=$NEXT_PUBLIC_APPSYNC_URL" >> .env
     build:
       commands:
         - npm run build
