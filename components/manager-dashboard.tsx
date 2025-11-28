@@ -27,7 +27,7 @@ export function ManagerDashboard() {
             Good morning, {currentUser.name.split(" ")[0]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1 text-pretty">
-            Here's what's happening with your team today
+            Here&apos;s what&apos;s happening with your team today
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
@@ -37,11 +37,16 @@ export function ManagerDashboard() {
               <span className="text-sm">Review Tasks</span>
             </Link>
           </Button>
-          <Button className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" asChild>
-            <Link href="/meetings/live">
-              <Video className="h-4 w-4" />
-              <span className="text-sm">Start Meeting</span>
-            </Link>
+          <Button 
+            className="gap-2 bg-charcoal hover:bg-charcoal/90 w-full sm:w-auto" 
+            onClick={() => {
+              const channelName = `meeting-${Date.now()}`
+              const meetingTitle = "New Meeting"
+              window.location.href = `/meetings/live?channel=${channelName}&title=${encodeURIComponent(meetingTitle)}`
+            }}
+          >
+            <Video className="h-4 w-4" />
+            <span className="text-sm">Start Meeting</span>
           </Button>
         </div>
       </div>
@@ -76,7 +81,7 @@ export function ManagerDashboard() {
         {/* Today's Tasks */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">Today's Tasks</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">Today&apos;s Tasks</h2>
             <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 text-xs sm:text-sm" asChild>
               <Link href="/tasks">
                 View all

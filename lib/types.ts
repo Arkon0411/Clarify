@@ -34,6 +34,8 @@ export interface Meeting {
   tasks: Task[]
   transcript?: string
   isLive?: boolean
+  isScheduled?: boolean
+  channel?: string
 }
 
 export interface TeamActivity {
