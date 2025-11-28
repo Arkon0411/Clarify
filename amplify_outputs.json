@@ -26,7 +26,7 @@
             "identity_providers": [
                 "Auth0"
             ],
-            "domain": "https://ap-southeast-2v6gnezlqh.auth.ap-southeast-2.amazoncognito.com",
+            "domain": "ap-southeast-2v6gnezlqh.auth.ap-southeast-2.amazoncognito.com",
             "scopes": [
                 "openid",
                 "profile",
