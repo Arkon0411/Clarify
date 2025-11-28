@@ -39,6 +39,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "latest",
+    "agora-access-token": "^2.0.4",
     "agora-rtc-react": "^2.5.0",
     "agora-rtc-sdk-ng": "^4.24.1",
     "autoprefixer": "^10.4.20",
