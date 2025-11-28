@@ -88,53 +88,52 @@ export function RequestToManager() {
     scrollToBottom()
   }, [messages])
 
-  const simulateAIResponse = (userMessage: string) => {
+  const getAIResponse = async (userMessage: string) => {
     setIsTyping(true)
 
-    setTimeout(() => {
-      let response = ""
-      let suggestions: string[] = []
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      })
 
-      // Simple keyword matching for demo
-      const lowerMessage = userMessage.toLowerCase()
-
-      if (lowerMessage.includes("time off") || lowerMessage.includes("vacation") || lowerMessage.includes("pto")) {
-        response =
-          "I understand you'd like to request time off. To help your manager process this quickly, could you provide:\n\n1. The dates you need off\n2. The reason for your request\n3. Any important deadlines or handoffs needed\n\nWould you like me to help you draft a formal request?"
-        suggestions = ["Yes, draft the request", "I'll provide more details", "Cancel request"]
-      } else if (lowerMessage.includes("blocker") || lowerMessage.includes("stuck") || lowerMessage.includes("issue")) {
-        response =
-          "I see you're experiencing a blocker. Let me help you communicate this effectively to your manager. Could you share:\n\n1. What task or project is blocked?\n2. What's causing the blocker?\n3. What help do you need?\n4. How urgent is this?\n\nThis will help your manager prioritize and assist you quickly."
-        suggestions = ["It's urgent", "I can wait", "Provide details now"]
-      } else if (
-        lowerMessage.includes("resource") ||
-        lowerMessage.includes("tool") ||
-        lowerMessage.includes("need")
-      ) {
-        response =
-          "I can help you request resources or tools. To make a strong case to your manager, let's include:\n\n1. What resource/tool do you need?\n2. Why is it necessary?\n3. How will it improve your work?\n4. Any budget considerations?\n\nShall we draft this request together?"
-        suggestions = ["Draft the request", "Add more context", "See similar requests"]
-      } else if (lowerMessage.includes("question") || lowerMessage.includes("clarify") || lowerMessage.includes("?")) {
-        response =
-          "I'll help you get clarification from your manager. To ensure you get a complete answer, could you:\n\n1. Specify what needs clarification\n2. Mention what you've already tried\n3. Note if this is blocking your work\n\nShould I format this as a question for your manager?"
-        suggestions = ["Yes, send it", "Add more context", "Never mind"]
-      } else {
-        response =
-          "I'm here to help you communicate with your manager. I can assist with:\n\n✓ Requesting time off\n✓ Reporting blockers or issues\n✓ Requesting resources or tools\n✓ Asking questions or clarifications\n✓ Providing status updates\n\nWhat would you like help with?"
-        suggestions = ["Request time off", "Report blocker", "Request resources", "Ask question"]
+      if (!response.ok) {
+        throw new Error("Failed to get AI response")
       }
+
+      const data = await response.json()
 
       const aiMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: response,
+        content: data.response,
         timestamp: new Date(),
-        suggestions,
+        suggestions: data.suggestions || [],
       }
 
       setMessages((prev) => [...prev, aiMessage])
+    } catch (error) {
+      console.error("AI response error:", error)
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date(),
+        suggestions: ["Try again", "Contact support"],
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   const handleSendMessage = () => {
@@ -150,7 +149,7 @@ export function RequestToManager() {
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
 
-    simulateAIResponse(inputValue)
+    getAIResponse(inputValue)
   }
 
   const handleSuggestionClick = (suggestion: string) => {
