@@ -20,7 +20,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Clarify - AI Meeting Task Manager",
   description: "AI-powered meeting task management system for teams",
-  generator: 'v0.app'
+  generator: 'v0.app',
+  icons: {
+    icon: [
+      { url: '/CLARIFY-LOGO.png', sizes: 'any' },
+      { url: '/CLARIFY-LOGO.png', sizes: '32x32', type: 'image/png' },
+      { url: '/CLARIFY-LOGO.png', sizes: '16x16', type: 'image/png' },
+    ],
+    shortcut: '/CLARIFY-LOGO.png',
+  }
 }
 
 export default function RootLayout({
