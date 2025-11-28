@@ -1,14 +1,10 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
-
-const _inter = Inter({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Clarify - AI Meeting Task Manager",
@@ -30,16 +26,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-<<<<<<< Updated upstream
-          {children}
-          <Toaster />
-=======
           <AuthProvider>
             {children}
             <Toaster />
-            <RadixToaster />
           </AuthProvider>
->>>>>>> Stashed changes
         </ThemeProvider>
         <Analytics />
       </body>
