@@ -8,6 +8,13 @@
 
 import { useEffect, useState } from 'react';
 
+// Extend Window interface for AgoraRTC
+declare global {
+  interface Window {
+    AgoraRTC?: any;
+  }
+}
+
 interface TokenResponse {
   token: string;
   appId: string;

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.5.5",
+    "@google/genai": "^1.30.0",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -39,6 +41,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "latest",
+    "agora-access-token": "^2.0.4",
     "agora-rtc-react": "^2.5.0",
     "agora-rtc-sdk-ng": "^4.24.1",
     "autoprefixer": "^10.4.20",
