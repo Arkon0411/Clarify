@@ -1,0 +1,54 @@
+{
+    "auth": {
+        "user_pool_id": "ap-southeast-2_v6gNEZlqh",
+        "aws_region": "ap-southeast-2",
+        "user_pool_client_id": "2knvuv3o1ct5ofte02q7dv2jmf",
+        "identity_pool_id": "",
+        "mfa_methods": [],
+        "standard_required_attributes": [
+            "email"
+        ],
+        "username_attributes": [
+            "email"
+        ],
+        "user_verification_types": [
+            "email"
+        ],
+        "mfa_configuration": "OPTIONAL",
+        "password_policy": {
+            "min_length": 8,
+            "require_lowercase": true,
+            "require_numbers": true,
+            "require_symbols": true,
+            "require_uppercase": true
+        },
+        "oauth": {
+            "identity_providers": [
+                "Auth0"
+            ],
+            "domain": "https://ap-southeast-2v6gnezlqh.auth.ap-southeast-2.amazoncognito.com",
+            "scopes": [
+                "openid",
+                "profile",
+                "email"
+            ],
+            "redirect_sign_in_uri": [
+                "http://localhost:3000"
+            ],
+            "redirect_sign_out_uri": [
+                "http://localhost:3000"
+            ],
+            "response_type": "code"
+        }
+    },
+    "data": {
+        "url": "https://vlbp42okcrbfxnygm34gwp4cdm.appsync-api.ap-southeast-2.amazonaws.com/graphql",
+        "aws_region": "ap-southeast-2",
+        "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
+        "authorization_types": [
+            "AMAZON_COGNITO_USER_POOLS"
+        ],
+        "api_key": ""
+    },
+    "version": "1"
+}
