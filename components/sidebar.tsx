@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LayoutDashboard, Kanban, Video, CheckSquare, Settings, User } from "lucide-react"
@@ -30,12 +31,16 @@ export function Sidebar({ isMobile }: SidebarProps) {
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
       {/* Header */}
       <div className="flex h-16 items-center border-b border-border px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-charcoal">
-            <Video className="h-4 w-4 text-primary-foreground" />
-          </div>
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Image 
+            src="/CLARIFY-LOGO.png" 
+            alt="Clarify Logo" 
+            width={64} 
+            height={64}
+            className="rounded-lg"
+          />
           <span className="text-lg font-semibold text-foreground">Clarify</span>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}

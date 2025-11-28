@@ -28,7 +28,6 @@ import {
   PhoneOff,
   Hand,
   MessageSquare,
-  Lock,
   Clock,
   Menu,
 } from "lucide-react"
@@ -117,7 +116,6 @@ export function MeetingLiveView() {
   }, [titleParam])
 
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [isConfidential, setIsConfidential] = useState(false)
   const [detectedTasks, setDetectedTasks] = useState(mockDetectedTasks)
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(true)
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false)
@@ -592,16 +590,6 @@ export function MeetingLiveView() {
     )
   }, [])
 
-  // Memoize Switch callback to prevent re-renders
-  const handleConfidentialChange = useCallback((checked: boolean) => {
-    // Use functional update to avoid dependency on isConfidential
-    setIsConfidential((prev: boolean) => {
-      // Only update if value actually changed
-      if (prev === checked) return prev
-      return checked
-    })
-  }, [])
-
   const pendingTasks = detectedTasks.filter((t: DetectedTask) => !t.confirmed)
   const confirmedTasks = detectedTasks.filter((t: DetectedTask) => t.confirmed)
 
@@ -634,16 +622,6 @@ export function MeetingLiveView() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            {!isMobile && (
-              <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground hidden xl:inline">Confidential</span>
-                <Switch 
-                  checked={isConfidential} 
-                  onCheckedChange={handleConfidentialChange} 
-                />
-              </div>
-            )}
             {isMobile && (
               <>
                 <Sheet open={isIntelligenceOpen} onOpenChange={setIsIntelligenceOpen}>
@@ -688,20 +666,6 @@ export function MeetingLiveView() {
             </div>
           </div>
         </div>
-
-        {/* Mobile Confidential Toggle */}
-        {isMobile && (
-          <div className="px-3 sm:px-6 py-2 bg-card border-b border-border">
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-foreground">Confidential</span>
-              <Switch 
-                checked={isConfidential} 
-                onCheckedChange={handleConfidentialChange} 
-              />
-            </div>
-          </div>
-        )}
 
         {/* Video Grid */}
         <div className="flex-1 p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 auto-rows-fr overflow-y-auto">
