@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
     const { message } = await request.json();
 
     // Hard-coded API key
-    const apiKey = "AIzaSyAMG9n2N7GwUhCtiz56gDXwCmgZ09-Akvs";
+    const apiKey = "";
 
     const prompt = `You are a helpful AI assistant for employees communicating with their managers. 
 Your role is to:
